@@ -1,3 +1,6 @@
 [submodule "affinity color-palette-gen"]
 	path = affinity color-palette-gen
 	url = https://github.com/nodeus/affinity-color-palette-gen.git
+[submodule "affinity hanging-chars-and-prepositions"]
+	path = affinity hanging-chars-and-prepositions
+	url = ./affinity hanging-chars-and-prepositions
