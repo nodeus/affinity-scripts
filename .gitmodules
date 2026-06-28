@@ -3,4 +3,4 @@
 	url = https://github.com/nodeus/affinity-color-palette-gen.git
 [submodule "affinity hanging-chars-and-prepositions"]
 	path = affinity hanging-chars-and-prepositions
-	url = ./affinity hanging-chars-and-prepositions
+	url = https://github.com/nodeus/affinity-hanging-chars-and-prepositions.git
