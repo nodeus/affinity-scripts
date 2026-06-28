@@ -1,6 +1,6 @@
 # Affinity Scripts
 
-Collection of scripts for Affinity Designer/Photo/Publisher, managed via MCP server.
+Collection of scripts for Affinity by Canva, managed via MCP server.
 
 ## Scripts
 
