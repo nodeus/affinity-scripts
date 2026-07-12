@@ -1,6 +1,6 @@
 # Affinity Chart Builder
 
-Script for Affinity Designer/Photo/Publisher that builds line, bar, and donut charts from numeric data in a text frame.
+Script for Affinity that builds line, bar, and donut charts from numeric data in a text frame.
 
 ![Chart Builder](images/affinity-chart-builder_1.png)
 
@@ -17,10 +17,11 @@ Script for Affinity Designer/Photo/Publisher that builds line, bar, and donut ch
 Create a text frame with data in this format:
 
 ```
-данные 1: 25, 56.8, 12.5, 45
-данные 2: 74, 20, 11, 28
-данные 3: 25.5, 74.5
-метки: май, июнь, июль, август
+Type 1: 25, 56.8, 12.5, 45, 99
+Type 2: 74, 20, 11, 28
+Type 3: 1.5, 74.5
+Type 4: 1, 99
+tags: Jan, Feb, Mar, Apr, May
 ```
 
 - Each `name: values` line defines a data series with a name
@@ -42,13 +43,6 @@ Create a text frame with data in this format:
 - **Thick** — line thickness in pixels (default: 2)
 - **Legend** — show/hide legend
 - **Show %** — show percentages in donut chart labels
-
-## Style
-
-- Axes: 1pt, color #787E82
-- Grid: 0.5pt, color #A6ABAE
-- Line caps: Round
-- Bar corners: Sharp (no rounding)
 
 ## Version
 
