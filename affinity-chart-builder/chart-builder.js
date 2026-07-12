@@ -1,7 +1,7 @@
 /**
  * name: Chart Builder
  * description: Build line, bar, donut charts. Line: Round caps, 2pt, Solid. Size: 500x400. "name: val1, val2" + "метки: a, b"
- * version: 5.7.0
+ * version: 1.1.1
  * author: nodeus
  */
 

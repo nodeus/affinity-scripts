@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.1
+
+- Support data without series name prefix (e.g. "25, 56.8, 12.5")
+- Error messages shown as pop-up dialogs instead of console.log
+
 ## 1.1.0
 
 - Fixed double stroke issue — single stroke per line, no extra fills
