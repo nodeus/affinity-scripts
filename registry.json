@@ -1,0 +1,26 @@
+{
+  "repository": "Affinity Scripts",
+  "last_updated": "2026-07-12",
+  "scripts": [
+    {
+      "id": "affinity-color-palette-gen",
+      "name": "Color Palette Generator",
+      "description": "Extract fills, strokes, gradients into organized swatches with RGB, CMYK, HSL, HEX values",
+      "author": "nodeus",
+      "version": "9.1.1",
+      "category": "Color",
+      "download_url": "https://raw.githubusercontent.com/nodeus/affinity-color-palette-gen/master/color-palette-gen.js",
+      "repository_url": "https://github.com/nodeus/affinity-color-palette-gen"
+    },
+    {
+      "id": "affinity-hanging-chars-and-prepositions",
+      "name": "Hanging Chars and Prepositions",
+      "description": "Fix orphaned characters and prepositions with non-breaking spaces for Russian and English",
+      "author": "nodeus",
+      "version": "1.0.0",
+      "category": "Text",
+      "download_url": "https://raw.githubusercontent.com/nodeus/affinity-hanging-chars-and-prepositions/master/hangingcharsandprepositions.js",
+      "repository_url": "https://github.com/nodeus/affinity-hanging-chars-and-prepositions"
+    }
+  ]
+}
