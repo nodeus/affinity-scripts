@@ -2,6 +2,8 @@
 
 Script for Affinity Designer/Photo/Publisher that builds line, bar, and donut charts from numeric data in a text frame.
 
+![Chart Builder](images/affinity-chart-builder_1.png)
+
 ## Features
 
 - **Line Chart** — multi-series lines with round caps, grid, 1pt axes, 0.5pt grid lines
@@ -50,4 +52,4 @@ Create a text frame with data in this format:
 
 ## Version
 
-1.1.0
+1.1.1
