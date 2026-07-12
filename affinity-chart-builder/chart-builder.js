@@ -1,6 +1,6 @@
 /**
  * name: Chart Builder
- * description: Build line, bar, donut charts. Line: Round caps, 2pt, Solid. Size: 500x400. "name: val1, val2" + "метки: a, b"
+ * description: Build line, bar, donut charts. Line: Round caps, 2pt, Solid. Size: 500x400. "name: val1, val2" + "tags: a, b"
  * version: 1.1.1
  * author: nodeus
  */
@@ -95,7 +95,7 @@ function parseData(text){
   var lines=text.split("\n"),series=[],seriesNames=[],labels=[];
   for(var i=0;i<lines.length;i++){
     var t=lines[i].trim();if(!t)continue;
-    var lm=t.match(/^метки:\s*(.+)$/i);
+    var lm=t.match(/^(?:метки|tags):\s*(.+)$/i);
     if(lm){labels=lm[1].split(",").map(function(v){return v.trim();}).filter(function(v){return v.length>0;});continue;}
     var m=t.match(/^(.+?):\s*(.+)$/);
     if(m){var vals=m[2].split(",").map(function(v){return parseFloat(v.trim());}).filter(function(v){return !isNaN(v);});if(vals.length>0){series.push(vals);seriesNames.push(m[1].trim());}}

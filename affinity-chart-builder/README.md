@@ -25,7 +25,7 @@ tags: Jan, Feb, Mar, Apr, May
 ```
 
 - Each `name: values` line defines a data series with a name
-- `метки:` line defines X-axis labels (optional)
+- `tags:` line defines X-axis labels (optional)
 - Multiple series supported, different lengths per series allowed
 
 ## Usage
