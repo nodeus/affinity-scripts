@@ -21,6 +21,16 @@
       "category": "Text",
       "download_url": "https://raw.githubusercontent.com/nodeus/affinity-hanging-chars-and-prepositions/master/hangingcharsandprepositions.js",
       "repository_url": "https://github.com/nodeus/affinity-hanging-chars-and-prepositions"
+    },
+    {
+      "id": "affinity-chart-builder",
+      "name": "Chart Builder",
+      "description": "Build line, bar, and donut charts from numeric data. 32-color palette, per-diagram legends, sharp bar corners, configurable axes/grid.",
+      "author": "nodeus",
+      "version": "1.1.0",
+      "category": "Generator",
+      "download_url": "https://raw.githubusercontent.com/nodeus/affinity-chart-builder/master/chart-builder.js",
+      "repository_url": "https://github.com/nodeus/affinity-chart-builder"
     }
   ]
 }
