@@ -1,7 +1,7 @@
 /**
  * name: Chart Builder
  * description: Build bar, column, and pie diagrams based on the data in the text object directly in affinity.
- * version: 1.3.0
+ * version: 1.3.1
  * author: nodeus
  */
 
@@ -149,19 +149,29 @@ function parseData(text){
 function buildLine(b,data,cfg){
   var m={top:40,right:30,bottom:50,left:80};
   var cW=cfg.W-m.left-m.right,cH=cfg.H-m.top-m.bottom;
-  var max=0;
-  for(var s=0;s<data.series.length;s++)for(var j=0;j<data.series[s].length;j++)if(data.series[s][j]>max)max=data.series[s][j];
-  if(max===0)max=1;
+  var max=0,min=0;
+  for(var s=0;s<data.series.length;s++)for(var j=0;j<data.series[s].length;j++){
+    if(data.series[s][j]>max)max=data.series[s][j];
+    if(data.series[s][j]<min)min=data.series[s][j];
+  }
+  if(max===0&&min===0){max=1;}
+  var range=max-min;if(range===0)range=Math.abs(max)||1;
   var ax=m.left,ay=m.top+cH;
+  var zeroY=min<0?ay-((0-min)/range)*cH:ay;
 
   addPolyLine(b,ax,m.top,ax,ay,1,{r:120,g:126,b:130});
-  addPolyLine(b,ax,ay,ax+cW,ay,1,{r:120,g:126,b:130});
+  if(min<0){
+    addPolyLine(b,ax,zeroY,ax+cW,zeroY,1,{r:120,g:126,b:130});
+  } else {
+    addPolyLine(b,ax,ay,ax+cW,ay,1,{r:120,g:126,b:130});
+  }
 
   var gl=cfg.gridLines||5;
-  for(var i=1;i<=gl;i++){
-    var y=ay-(i/gl)*cH;
+  for(var i=0;i<=gl;i++){
+    var val=min+(i/gl)*range;
+    var y=ay-((val-min)/range)*cH;
     addPolyLine(b,ax,y,ax+cW,y,0.5,{r:166,g:171,b:174});
-    addText(b,ax-55,y-8,50,16,Math.round((i/gl)*max).toString(),10,{r:120,g:120,b:120});
+    addText(b,ax-55,y-8,50,16,Math.round(val).toString(),10,{r:120,g:120,b:120});
   }
 
   for(var si=0;si<data.series.length;si++){
@@ -174,10 +184,10 @@ function buildLine(b,data,cfg){
       xs=cW/pc2;
     }
     for(var k=0;k<ser.length;k++){
-      var px=ax+k*xs,py=ay-(ser[k]/max)*cH;
+      var px=ax+k*xs,py=ay-((ser[k]-min)/range)*cH;
       addText(b,px-20,py-24,40,16,ser[k].toString(),9,col);
       if(k>0){
-        var px0=ax+(k-1)*xs,py0=ay-(ser[k-1]/max)*cH;
+        var px0=ax+(k-1)*xs,py0=ay-((ser[k-1]-min)/range)*cH;
         addPolyLine(b,px0,py0,px,py,cfg.lineThickness||2,col);
       }
     }
@@ -198,19 +208,29 @@ function buildLine(b,data,cfg){
 function buildBar(b,data,cfg){
   var m={top:40,right:30,bottom:50,left:80};
   var cW=cfg.W-m.left-m.right,cH=cfg.H-m.top-m.bottom;
-  var max=0;
-  for(var s=0;s<data.series.length;s++)for(var j=0;j<data.series[s].length;j++)if(data.series[s][j]>max)max=data.series[s][j];
-  if(max===0)max=1;
+  var max=0,min=0;
+  for(var s=0;s<data.series.length;s++)for(var j=0;j<data.series[s].length;j++){
+    if(data.series[s][j]>max)max=data.series[s][j];
+    if(data.series[s][j]<min)min=data.series[s][j];
+  }
+  if(max===0&&min===0){max=1;}
+  var range=max-min;if(range===0)range=Math.abs(max)||1;
   var ax=m.left,ay=m.top+cH;
+  var zeroY=min<0?ay+(min/range)*cH:ay;
 
   addPolyLine(b,ax,m.top,ax,ay,1,{r:120,g:126,b:130});
-  addPolyLine(b,ax,ay,ax+cW,ay,1,{r:120,g:126,b:130});
+  if(min<0){
+    addPolyLine(b,ax,zeroY,ax+cW,zeroY,1,{r:120,g:126,b:130});
+  } else {
+    addPolyLine(b,ax,ay,ax+cW,ay,1,{r:120,g:126,b:130});
+  }
 
   var gl=cfg.gridLines||5;
-  for(var i=1;i<=gl;i++){
-    var y=ay-(i/gl)*cH;
+  for(var i=0;i<=gl;i++){
+    var val=min+(i/gl)*range;
+    var y=ay-((val-min)/range)*cH;
     addPolyLine(b,ax,y,ax+cW,y,0.5,{r:166,g:171,b:174});
-    addText(b,ax-55,y-8,50,16,Math.round((i/gl)*max).toString(),10,{r:120,g:120,b:120});
+    addText(b,ax-55,y-8,50,16,Math.round(val).toString(),10,{r:120,g:120,b:120});
   }
 
   var pc=0;for(var s=0;s<data.series.length;s++)if(data.series[s].length>pc)pc=data.series[s].length;
@@ -219,11 +239,17 @@ function buildBar(b,data,cfg){
   var sc=data.series.length,bw=(gw*0.7)/sc;
   for(var pi=0;pi<pc;pi++)for(var si=0;si<sc;si++){
     var v=data.series[si][pi];if(v===undefined||isNaN(v))continue;
-    var bh=(v/max)*cH;
+    var bh=(v/range)*cH;
     var x=ax+pi*gw+padX+si*bw;
     var bc=getCol(cfg.customColors,si);
-    addRect(b,x,ay-bh,bw-2,bh,bc,cfg.barRadius);
-    addText(b,x,ay-bh-18,bw,16,v.toString(),9,bc);
+    var barTop=zeroY-bh;
+    if(v>=0){
+      addRect(b,x,barTop,bw-2,bh,bc,cfg.barRadius);
+      addText(b,x,barTop-18,bw,16,v.toString(),9,bc);
+    } else {
+      addRect(b,x,zeroY,bw-2,-bh,bc,cfg.barRadius);
+      addText(b,x,barTop+2,bw,16,v.toString(),9,bc);
+    }
   }
 
   if(data.labels.length>0){
@@ -310,22 +336,28 @@ function renderChart(doc,data,cfg){
   applyLineStyles(doc,b);
 }
 
+function showError(msg){
+  var e=Dialog.create("Error");e.initialWidth=250;
+  e.addColumn().addGroup("").addStaticText("",msg);
+  e.runModal();
+}
+
 var doc=Document.current;
-if(!doc){console.log("No document");return;}
+if(!doc){showError("No document");return;}
 var textNode=null;
 for(var i=0;i<doc.selection.nodes.length;i++){if(doc.selection.nodes.at(i).isFrameTextNode){textNode=doc.selection.nodes.at(i);break;}}
-if(!textNode){console.log("Select a text frame");return;}
+if(!textNode){showError("Select a text frame");return;}
 
 var text=textNode.storyInterface.story.getText(0,textNode.storyInterface.story.length);
 var data=parseData(text);
-if(data.series.length===0){console.log("No data");return;}
+if(data.series.length===0){showError("No data");return;}
 
 var dlg=Dialog.create("Chart Builder");dlg.initialWidth=350;
 var col=dlg.addColumn();
 var gt=col.addGroup("Type");var tl=gt.addComboBox("",["Line","Bar","Donut"],0);
 var gs=col.addGroup("Size");var we=gs.addUnitValueEditor("W:",UnitType.Pixel,UnitType.Pixel);we.value=500;var he=gs.addUnitValueEditor("H:",UnitType.Pixel,UnitType.Pixel);he.value=400;
 var gl=col.addGroup("Line");var lte=gl.addUnitValueEditor("Thick:",UnitType.Pixel,UnitType.Pixel);lte.value=2;
-var ggrid=col.addGroup("Grid");var gle=ggrid.addUnitValueEditor("Lines:",UnitType.Pixel,UnitType.Pixel,5,1,20);
+var gridVals=[];for(var i=2;i<=20;i++)gridVals.push(i);var ggrid=col.addGroup("");var gle=ggrid.addComboBox("Grid:",gridVals.map(String),3);
 var gbar=col.addGroup("Bar");var rve=gbar.addUnitValueEditor("Radius:",UnitType.Pixel,UnitType.Pixel,0,0,50);
 var gclr=col.addGroup("Colors");
 var colorPickers=[];
@@ -361,6 +393,15 @@ for(var ci=0;ci<colorPickers.length;ci++){
   else customColors.push(PAL[ci%PAL.length]);
 }
 
-renderChart(doc,data,{W:w,H:h,lineThickness:lte.value||2,chartType:tl.selectedIndex,showLegend:sle.value,showPercent:spe.value,gridLines:gle.value,barRadius:rve.value,customColors:customColors,labelMode:lme.selectedIndex});
+// Check for negative values in pie chart
+if(tl.selectedIndex===2){
+  for(var s=0;s<data.series.length;s++){
+    for(var j=0;j<data.series[s].length;j++){
+      if(data.series[s][j]<0){showError("Pie chart does not support negative values");return;}
+    }
+  }
+}
+
+renderChart(doc,data,{W:w,H:h,lineThickness:lte.value||2,chartType:tl.selectedIndex,showLegend:sle.value,showPercent:spe.value,gridLines:gridVals[gle.selectedIndex]||5,barRadius:rve.value,customColors:customColors,labelMode:lme.selectedIndex});
 
 console.log(["Line","Bar","Donut"][tl.selectedIndex]+" "+w+"x"+h);

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.1
+
+- Bar chart: support negative values
+- Line chart: support negative values with correct grid lines
+- Pie chart: error message for negative values
+- Error messages shown as pop-up dialogs
+
 ## 1.3.0
 
 - Parser: last line = labels (any prefix or none), `---` separator for explicit labels

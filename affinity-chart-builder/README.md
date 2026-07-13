@@ -53,4 +53,4 @@ Jan, Feb, Mar, Apr, May
 
 ## Version
 
-1.3.0
+1.3.1
