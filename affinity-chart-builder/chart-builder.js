@@ -1,7 +1,7 @@
 /**
  * name: Chart Builder
- * description: Build line, bar, donut charts. Line: Round caps, 2pt, Solid. Size: 500x400. "name: val1, val2" + "tags: a, b"
- * version: 1.1.1
+ * description: Build bar, column, and pie diagrams based on the data in the text object directly in affinity.
+ * version: 1.3.0
  * author: nodeus
  */
 
@@ -10,7 +10,7 @@
 const { Document } = require("/document");
 const { AddChildNodesCommandBuilder, NodeChildType } = require("/commands");
 const { ShapeNodeDefinition, FrameTextNodeDefinition, PolyCurveNodeDefinition } = require("/nodes");
-const { Shape, ShapeType, ShapeRectangle } = require("/shapes");
+const { Shape, ShapeType, ShapeRectangle, ShapeCornerType } = require("/shapes");
 const { Rectangle, CurveBuilder, PolyCurve } = require("/geometry");
 const { Colour } = require("/colours");
 const { FillDescriptor, SolidFill } = require("/fills");
@@ -35,8 +35,9 @@ const PAL=[
 
 function mkC(r){return Colour.createRGBA8({r:r.r,g:r.g,b:r.b,alpha:255})}
 function mkF(r){return FillDescriptor.createSolid(SolidFill.create(mkC(r)),BlendMode.Normal)}
-function addRect(b,x,y,w,h,c){if(w<=0||h<=0)return;var sh=ShapeRectangle.create(new Rectangle(x,y,w,h));sh.setTopLeft(0);sh.setTopRight(0);sh.setBottomLeft(0);sh.setBottomRight(0);b.addNode(ShapeNodeDefinition.create(sh,new Rectangle(x,y,w,h),c?mkF(c):FillDescriptor.createNone(),null,null,null))}
+function addRect(b,x,y,w,h,c,radius){if(w<=0||h<=0)return;var sh=ShapeRectangle.create();sh.setAbsoluteSizes(true,w,h);var r=radius||0;if(r>0){sh.topLeft.cornerType=ShapeCornerType.Round;sh.topLeft.setRadius(r,w,h);sh.topRight.cornerType=ShapeCornerType.Round;sh.topRight.setRadius(r,w,h);sh.bottomLeft.cornerType=ShapeCornerType.Round;sh.bottomLeft.setRadius(r,w,h);sh.bottomRight.cornerType=ShapeCornerType.Round;sh.bottomRight.setRadius(r,w,h);}b.addNode(ShapeNodeDefinition.create(sh,new Rectangle(x,y,w,h),c?mkF(c):FillDescriptor.createNone(),null,null,null))}
 function addText(b,x,y,w,h,t,sz,c){var ga=GlyphAtts.create();ga.height=sz;ga.brushFill=FillDescriptor.createSolid(SolidFill.create(mkC(c)),BlendMode.Normal);var pa=ParagraphAtts.create();pa.alignXType=1;var sb=StoryBuilder.create();sb.setParagraphAtts(pa);sb.setGlyphAtts(ga);sb.addText(t);b.addNode(FrameTextNodeDefinition.createFromStoryBuilder(new Rectangle(x,y,w,h),sb))}
+function getCol(cc,si,di){return(cc&&cc[di!==undefined?di:si])?cc[di!==undefined?di:si]:PAL[si%PAL.length]}
 
 // PolyCurve line - stores settings for post-batch application
 function addPolyLine(b,x1,y1,x2,y2,sw,c){
@@ -93,13 +94,55 @@ function applyLineStyles(doc,builder){
 
 function parseData(text){
   var lines=text.split("\n"),series=[],seriesNames=[],labels=[];
+  var nonEmpty=[];
   for(var i=0;i<lines.length;i++){
-    var t=lines[i].trim();if(!t)continue;
-    var lm=t.match(/^(?:метки|tags):\s*(.+)$/i);
-    if(lm){labels=lm[1].split(",").map(function(v){return v.trim();}).filter(function(v){return v.length>0;});continue;}
-    var m=t.match(/^(.+?):\s*(.+)$/);
-    if(m){var vals=m[2].split(",").map(function(v){return parseFloat(v.trim());}).filter(function(v){return !isNaN(v);});if(vals.length>0){series.push(vals);seriesNames.push(m[1].trim());}}
+    var t=lines[i].trim();if(t)nonEmpty.push(t);
   }
+  if(nonEmpty.length===0)return{series:series,seriesNames:seriesNames,labels:labels};
+
+  // Find --- separator
+  var sepIdx=-1;
+  for(var i=0;i<nonEmpty.length;i++){
+    if(nonEmpty[i].match(/^---+$/)){sepIdx=i;break;}
+  }
+
+  var dataLines=sepIdx>=0?nonEmpty.slice(0,sepIdx):nonEmpty;
+  var labelLines=sepIdx>=0?nonEmpty.slice(sepIdx+1):[];
+
+  // Parse data lines
+  for(var i=0;i<dataLines.length;i++){
+    var t=dataLines[i];
+    var m=t.match(/^(.+?):\s*(.+)$/);
+    if(m){
+      var vals=m[2].split(",").map(function(v){return parseFloat(v.trim());}).filter(function(v){return !isNaN(v);});
+      if(vals.length>0){series.push(vals);seriesNames.push(m[1].trim());}
+    } else {
+      var vals=t.split(",").map(function(v){return parseFloat(v.trim());}).filter(function(v){return !isNaN(v);});
+      if(vals.length>0){series.push(vals);seriesNames.push("");}
+    }
+  }
+
+  // Parse labels
+  if(sepIdx>=0 && labelLines.length>0){
+    var labelText=labelLines.join(", ");
+    labels=labelText.split(",").map(function(v){return v.trim();}).filter(function(v){return v.length>0;});
+  } else if(sepIdx<0 && series.length>0){
+    var last=nonEmpty[nonEmpty.length-1];
+    var lastMatch=last.match(/^(.+?):\s*(.+)$/);
+    var lastIsSeries=false;
+    if(lastMatch){
+      var lastVals=lastMatch[2].split(",").map(function(v){return parseFloat(v.trim());}).filter(function(v){return !isNaN(v);});
+      lastIsSeries=lastVals.length>0;
+    } else {
+      var lastVals=last.split(",").map(function(v){return parseFloat(v.trim());}).filter(function(v){return !isNaN(v);});
+      lastIsSeries=lastVals.length>0;
+    }
+    if(!lastIsSeries){
+      var labelPart=last.replace(/^\S+:\s*/,'');
+      labels=labelPart.split(",").map(function(v){return v.trim();}).filter(function(v){return v.length>0;});
+    }
+  }
+
   return{series:series,seriesNames:seriesNames,labels:labels};
 }
 
@@ -114,15 +157,22 @@ function buildLine(b,data,cfg){
   addPolyLine(b,ax,m.top,ax,ay,1,{r:120,g:126,b:130});
   addPolyLine(b,ax,ay,ax+cW,ay,1,{r:120,g:126,b:130});
 
-  for(var i=1;i<=5;i++){
-    var y=ay-(i/5)*cH;
+  var gl=cfg.gridLines||5;
+  for(var i=1;i<=gl;i++){
+    var y=ay-(i/gl)*cH;
     addPolyLine(b,ax,y,ax+cW,y,0.5,{r:166,g:171,b:174});
-    addText(b,ax-55,y-8,50,16,Math.round((i/5)*max).toString(),10,{r:120,g:120,b:120});
+    addText(b,ax-55,y-8,50,16,Math.round((i/gl)*max).toString(),10,{r:120,g:120,b:120});
   }
 
   for(var si=0;si<data.series.length;si++){
-    var ser=data.series[si],col=PAL[si%PAL.length];
-    var xs=cW/(ser.length-1||1);
+    var ser=data.series[si],col=getCol(cfg.customColors,si);
+    var xs;
+    if(cfg.labelMode===1){
+      xs=cW/(ser.length-1||1);
+    } else {
+      var pc2=0;for(var s=0;s<data.series.length;s++)if(data.series[s].length>pc2)pc2=data.series[s].length;
+      xs=cW/pc2;
+    }
     for(var k=0;k<ser.length;k++){
       var px=ax+k*xs,py=ay-(ser[k]/max)*cH;
       addText(b,px-20,py-24,40,16,ser[k].toString(),9,col);
@@ -134,8 +184,14 @@ function buildLine(b,data,cfg){
   }
 
   if(data.labels.length>0){
-    var xsl=cW/(data.labels.length-1||1);
-    for(var li=0;li<data.labels.length;li++)addText(b,ax+li*xsl-25,ay+10,50,16,data.labels[li],10,{r:80,g:80,b:80});
+    if(cfg.labelMode===1){
+      var xsl=cW/(data.labels.length-1||1);
+      for(var li=0;li<data.labels.length;li++){var lx=ax+li*xsl-25;if(li===data.labels.length-1)lx=ax+cW-25;addText(b,lx,ay+10,50,16,data.labels[li],10,{r:80,g:80,b:80});}
+    } else {
+      var pc2=0;for(var s=0;s<data.series.length;s++)if(data.series[s].length>pc2)pc2=data.series[s].length;
+      var gw2=cW/pc2;
+      for(var li=0;li<data.labels.length;li++)addText(b,ax+li*gw2-25,ay+10,50,16,data.labels[li],10,{r:80,g:80,b:80});
+    }
   }
 }
 
@@ -150,26 +206,37 @@ function buildBar(b,data,cfg){
   addPolyLine(b,ax,m.top,ax,ay,1,{r:120,g:126,b:130});
   addPolyLine(b,ax,ay,ax+cW,ay,1,{r:120,g:126,b:130});
 
-  for(var i=1;i<=5;i++){
-    var y=ay-(i/5)*cH;
+  var gl=cfg.gridLines||5;
+  for(var i=1;i<=gl;i++){
+    var y=ay-(i/gl)*cH;
     addPolyLine(b,ax,y,ax+cW,y,0.5,{r:166,g:171,b:174});
-    addText(b,ax-55,y-8,50,16,Math.round((i/5)*max).toString(),10,{r:120,g:120,b:120});
+    addText(b,ax-55,y-8,50,16,Math.round((i/gl)*max).toString(),10,{r:120,g:120,b:120});
   }
 
   var pc=0;for(var s=0;s<data.series.length;s++)if(data.series[s].length>pc)pc=data.series[s].length;
-  var gw=cW/pc,sc=data.series.length,bw=(gw*0.7)/sc;
+  var gw=cW/pc;
+  var padX=cfg.labelMode===1?0:(gw*0.3)/2;
+  var sc=data.series.length,bw=(gw*0.7)/sc;
   for(var pi=0;pi<pc;pi++)for(var si=0;si<sc;si++){
     var v=data.series[si][pi];if(v===undefined||isNaN(v))continue;
     var bh=(v/max)*cH;
-    var x=ax+pi*gw+(gw*0.3)/2+si*bw;
-    addRect(b,x,ay-bh,bw-2,bh,PAL[si%PAL.length]);
-    addText(b,x,ay-bh-18,bw,16,v.toString(),9,PAL[si%PAL.length]);
+    var x=ax+pi*gw+padX+si*bw;
+    var bc=getCol(cfg.customColors,si);
+    addRect(b,x,ay-bh,bw-2,bh,bc,cfg.barRadius);
+    addText(b,x,ay-bh-18,bw,16,v.toString(),9,bc);
   }
 
-  if(data.labels.length>0)for(var li=0;li<data.labels.length;li++)addText(b,ax+li*gw,ay+10,gw,16,data.labels[li],10,{r:80,g:80,b:80});
+  if(data.labels.length>0){
+    if(cfg.labelMode===1){
+      var xsl=cW/(data.labels.length-1||1);
+      for(var li=0;li<data.labels.length;li++){var lx=ax+li*xsl-25;if(li===data.labels.length-1)lx=ax+cW-25;addText(b,lx,ay+10,50,16,data.labels[li],10,{r:80,g:80,b:80});}
+    } else {
+      for(var li=0;li<data.labels.length;li++)addText(b,ax+li*gw,ay+10,gw,16,data.labels[li],10,{r:80,g:80,b:80});
+    }
+  }
 }
 
-function buildSingleDonut(b,vals,ox,oy,ds,ir,showPercent){
+function buildSingleDonut(b,vals,ox,oy,ds,ir,showPercent,colors){
   var total=0;for(var j=0;j<vals.length;j++)total+=vals[j];
   if(total===0)return;
   var cx=ds/2,cy=ds/2;
@@ -181,7 +248,7 @@ function buildSingleDonut(b,vals,ox,oy,ds,ir,showPercent){
   for(var k=0;k<vals.length;k++){
     var sw=(vals[k]/total)*Math.PI*2;
     var cp=Shape.create(ShapeType.Pie);cp.innerRadius=ir;cp.startAngle=sa;cp.endAngle=sa+sw;cp.sweep=sw;
-    b.addNode(ShapeNodeDefinition.create(cp,new Rectangle(ox,oy,ds,ds),mkF(PAL[k%PAL.length]),null,null,null));
+    b.addNode(ShapeNodeDefinition.create(cp,new Rectangle(ox,oy,ds,ds),mkF(getCol(colors,k,k)),null,null,null));
     sa+=sw;
   }
 
@@ -200,7 +267,7 @@ function buildSingleDonut(b,vals,ox,oy,ds,ir,showPercent){
   var sb=StoryBuilder.create();sb.setParagraphAtts(pa);sb.setGlyphAtts(ga);sb.addText(total.toString());
   var ga2=GlyphAtts.create();ga2.height=Math.max(9,ds*0.04);
   ga2.brushFill=FillDescriptor.createSolid(SolidFill.create(mkC({r:120,g:120,b:120})),BlendMode.Normal);
-  sb.setGlyphAtts(ga2);sb.addText("\nвсего");
+  sb.setGlyphAtts(ga2);sb.addText("\ntotal");
   b.addNode(FrameTextNodeDefinition.createFromStoryBuilder(new Rectangle(ox+cx-ds*0.2,oy+cy-ds*0.12,ds*0.4,ds*0.24),sb));
 }
 
@@ -208,14 +275,14 @@ function buildDonut(b,data,cfg){
   var sc=data.series.length,gap=40;
   var ds=Math.min(cfg.W,cfg.H,(cfg.W-gap*Math.max(0,sc-1))/Math.max(1,sc));
   for(var si=0;si<sc;si++){
-    buildSingleDonut(b,data.series[si],si*(ds+gap),0,ds,0.4,cfg.showPercent);
+    buildSingleDonut(b,data.series[si],si*(ds+gap),0,ds,0.4,cfg.showPercent,cfg.customColors);
     if(cfg.showLegend){
       var lx=si*(ds+gap)+ds/2-40;
       var ly=ds+10;
-      addText(b,lx,ly,100,16,data.seriesNames[si]||("Series "+(si+1)),11,{r:80,g:80,b:80});
+      addText(b,lx,ly,100,16,data.seriesNames[si]||("label "+(si+1)),11,{r:80,g:80,b:80});
       ly+=18;
       for(var k=0;k<data.series[si].length;k++){
-        addRect(b,lx,ly,10,10,PAL[k%PAL.length]);
+        addRect(b,lx,ly,10,10,getCol(cfg.customColors,k,k));
         addText(b,lx+14,ly-2,60,16,data.series[si][k].toString(),10,{r:100,g:100,b:100});
         ly+=16;
       }
@@ -233,8 +300,8 @@ function renderChart(doc,data,cfg){
     var lx=cfg.W+20;
     var ly=20;
     for(var i=0;i<data.series.length;i++){
-      addRect(b,lx,ly,14,14,PAL[i%PAL.length]);
-      addText(b,lx+20,ly-1,100,16,data.seriesNames[i]||("Series "+(i+1)),10,{r:60,g:60,b:60});
+      addRect(b,lx,ly,14,14,getCol(cfg.customColors,i));
+      addText(b,lx+20,ly-1,100,16,data.seriesNames[i]||("label "+(i+1)),10,{r:60,g:60,b:60});
       ly+=22;
     }
   }
@@ -258,8 +325,28 @@ var col=dlg.addColumn();
 var gt=col.addGroup("Type");var tl=gt.addComboBox("",["Line","Bar","Donut"],0);
 var gs=col.addGroup("Size");var we=gs.addUnitValueEditor("W:",UnitType.Pixel,UnitType.Pixel);we.value=500;var he=gs.addUnitValueEditor("H:",UnitType.Pixel,UnitType.Pixel);he.value=400;
 var gl=col.addGroup("Line");var lte=gl.addUnitValueEditor("Thick:",UnitType.Pixel,UnitType.Pixel);lte.value=2;
+var ggrid=col.addGroup("Grid");var gle=ggrid.addUnitValueEditor("Lines:",UnitType.Pixel,UnitType.Pixel,5,1,20);
+var gbar=col.addGroup("Bar");var rve=gbar.addUnitValueEditor("Radius:",UnitType.Pixel,UnitType.Pixel,0,0,50);
+var gclr=col.addGroup("Colors");
+var colorPickers=[];
+for(var ci=0;ci<data.series.length;ci++){
+  var def=PAL[ci%PAL.length];
+  var cp=gclr.addColourPicker("Series "+(ci+1)+":",Colour.createRGBA8({r:def.r,g:def.g,b:def.b,alpha:255}));
+  colorPickers.push(cp);
+}
+var glbl=col.addGroup("Labels");var lme=glbl.addComboBox("Mode:",["Sequential","Spread"],0);
 var gleg=col.addGroup("");var sle=gleg.addCheckBox("Legend",true);
 var gd=col.addGroup("Donut");var spe=gd.addCheckBox("Show %",false);
+
+function updateVisibility(){
+  var ti=tl.selectedIndex;
+  var show=[],hide=[];
+  if(ti===1)show.push(gbar.itemID);else hide.push(gbar.itemID);
+  if(ti!==2)show.push(ggrid.itemID);else hide.push(ggrid.itemID);
+  dlg.setItemsVisibility(show,hide);
+}
+tl.setOnValueChangedHandler(updateVisibility);
+updateVisibility();
 
 var result=dlg.runModal();
 if(result!==DialogResult.Ok){console.log("Cancelled");return;}
@@ -267,6 +354,13 @@ if(result!==DialogResult.Ok){console.log("Cancelled");return;}
 var w=we.value;if(w<=0)w=500;
 var h=he.value;if(h<=0)h=400;
 
-renderChart(doc,data,{W:w,H:h,lineThickness:lte.value||2,chartType:tl.selectedIndex,showLegend:sle.value,showPercent:spe.value});
+var customColors=[];
+for(var ci=0;ci<colorPickers.length;ci++){
+  var cv=colorPickers[ci].value;
+  if(cv)customColors.push({r:cv.rgba8.r,g:cv.rgba8.g,b:cv.rgba8.b});
+  else customColors.push(PAL[ci%PAL.length]);
+}
+
+renderChart(doc,data,{W:w,H:h,lineThickness:lte.value||2,chartType:tl.selectedIndex,showLegend:sle.value,showPercent:spe.value,gridLines:gle.value,barRadius:rve.value,customColors:customColors,labelMode:lme.selectedIndex});
 
 console.log(["Line","Bar","Donut"][tl.selectedIndex]+" "+w+"x"+h);

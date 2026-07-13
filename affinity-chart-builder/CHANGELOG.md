@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.3.0
+
+- Parser: last line = labels (any prefix or none), `---` separator for explicit labels
+- Parser: bare numbers without colon parsed as unnamed series
+- Bar corners radius (0-50px) via UI
+- Grid lines count (1-20) via UI
+- Per-series color pickers in UI
+- Label distribution mode: Sequential (default) / Spread
+- Donut: "total" instead of "всего"
+- Legend: "label N" for unnamed series
+- Dynamic UI visibility (Grid/Bar groups toggle by chart type)
+
+## 1.2.0
+
+- Parser: last line always labels (any prefix or none)
+- Bar corners radius (0-50px) via UI
+- Grid lines count (1-20) via UI
+- Per-series color pickers in UI
+- Dynamic UI visibility (Grid/Bar groups toggle by chart type)
+
 ## 1.1.1
 
 - Support data without series name prefix (e.g. "25, 56.8, 12.5")
