@@ -1,9 +1,37 @@
+# Node / tooling
+node_modules/
+.mimocode/node_modules/
+*.log
+npm-debug.log*
+
 # OS
+.DS_Store
 Thumbs.db
 Desktop.ini
-.DS_Store
+desktop.ini
+
+# Affinity document files
+*.af
+*.afdesign
+*.afphoto
+*.afpub
+
+# Local analysis / scratch data
+_distill_*.py
+_query_db*.py
+_distill_output.txt
+*.db
+*.sqlite
+*.sqlite3
 
 # Editor
 *.swp
 *.swo
 *~
+.vscode/settings.json
+.idea/
+
+# Temp
+*.tmp
+*.bak
+~$*
