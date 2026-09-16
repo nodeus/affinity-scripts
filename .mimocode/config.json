@@ -1,9 +1,0 @@
-{
-  "mcp": {
-    "servers": {
-      "affinity": {
-        "url": "http://localhost:6767"
-      }
-    }
-  }
-}
