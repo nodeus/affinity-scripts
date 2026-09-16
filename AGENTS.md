@@ -5,16 +5,58 @@
 Workspace for writing JavaScript scripts for Affinity Designer/Photo/Publisher. Scripts run inside Affinity via an MCP server (localhost:6767). Not a Node.js project — there's no `package.json`, no build step, no tests.
 
 ## Expected Repository Structure
-- docs/specs/
-- .mimocode/agents/
-- .mimocode/skills/
+
+```
+affinity/
+├── scripts/                         # Custom scripts by nodeus
+│   ├── chart-builder/               # Line/Bar/Donut diagrams from text
+│   │   ├── source/chart-builder.js  # Editable source
+│   │   ├── release/chart-builder.js # Tested release
+│   │   └── README.md
+│   ├── color-palette-gen/           # Fills/strokes/gradients palette
+│   │   ├── source/color-palette-gen.js
+│   │   ├── release/color-palette-gen.js
+│   │   └── README.md
+│   └── hanging-chars/               # NBSP for orphan letters/prepositions
+│       ├── source/hanging-chars.js
+│       ├── release/hanging-chars.js
+│       └── README.md
+├── docs/
+│   ├── 00-index.md                  # Master index
+│   ├── 01-mcp-tools.md              # MCP tools reference
+│   ├── 02-sdk-v3.3.0.md             # SDK API reference (EN)
+│   ├── 03-migration-guide.md        # Import path migration (RU)
+│   ├── 04-community-scripts.md      # Community scripts catalog
+│   ├── 05-tutorial.md               # Practical tutorial (RU)
+│   ├── 06-examples.md               # Code examples
+│   ├── 07-script-patterns.md        # Patterns & recipes
+│   ├── 08-text-effects.md           # Story/Glyph/Paragraph details
+│   └── specs/                       # Script specifications
+│       ├── _template.md
+│       ├── chart-builder.md
+│       ├── color-palette-gen.md
+│       └── hanging-chars.md
+├── community-scripts/               # 70+ scripts from JiriKrblich (read-only reference)
+├── .mimocode/                       # MiMo Code config, tools, skills
+│   ├── config.json
+│   ├── tools/
+│   │   ├── affinity-check.ts        # Script validator
+│   │   └── affinity-scaffold.ts     # Boilerplate generator
+│   └── skills/affinity-scripting/
+│       ├── SKILL.md                 # Complete skill definition
+│       └── templates/               # 8 script templates
+├── archive/                         # Old files (pre-SDK 3.3.0)
+└── AGENTS.md                        # This file
+```
 
 ## Delivery Workflow
-1. Уточнить задачу.
-2. При необходимости обновить specs.
-3. Реализовать минимальный рабочий slice.
-4. Обновить сопутствующую документацию.
 
+1. Уточнить задачу.
+2. При необходимости обновить spec в `docs/specs/`.
+3. Реализовать минимальный рабочий slice.
+4. Прогнать через `affinity-check`.
+5. Обновить сопутствующую документацию.
+6. Скопировать из `source/` в `release/` после тестирования.
 
 ## MCP Connection
 
@@ -28,12 +70,11 @@ The Affinity MCP server must be running for script execution. Config in `.mimoco
 
 | Path | Purpose |
 |------|---------|
-| `community-scripts/` | 70+ scripts from JiriKrblich/Affinity-Community-Scripts. Read `registry.json` for metadata. |
-| `affinity scripts/` | Custom scripts by nodeus (color palette gen, hanging chars, chart builder) |
-| `affinity-chart-builder/` | Standalone chart builder (bar/column/pie/donut from text frame data) |
-| `docs/` | SDK documentation, tutorial, API reference (all in Russian) |
+| `scripts/` | Custom scripts by nodeus — each has `source/`, `release/`, `README.md` |
+| `community-scripts/` | 70+ scripts from JiriKrblich/Affinity-Community-Scripts (read-only) |
+| `docs/` | SDK documentation, specs, tutorials |
 | `.mimocode/` | MiMo Code config, custom tools, hooks, skill templates |
-| `_query_db*.py`, `_distill_analysis*.py` | Local Python scripts for querying MiMo Code's SQLite DB — not part of the Affinity scripts themselves |
+| `archive/` | Old files pre-SDK 3.3.0 migration |
 
 ## Before Writing Any Script
 
@@ -47,12 +88,14 @@ The Affinity MCP server must be running for script execution. Config in `.mimoco
 - Scripts do **not** return values — use `console.log()` for output
 - Scripts must be **directly executable** — no `module.exports.main`
 - Always start with `"use strict"`
-- Imports use bare module paths: `require('/document')`, `require('/shapes')`, etc.
+- Imports use JSLib paths with `.js`: `require('/document.js')`, `require('/shapes.js')`, etc.
+- Enum imports use raw modules: `require('affinity:common')` for `BlendMode`, `UnitType`
 - File system access is Desktop-only (`app.userDesktopPath`)
 - `NOT_ALLOWED` error = user restricted AI/FS/Network in Affinity settings
 - All mutations go through `doc.executeCommand()` — never mutate nodes directly
 - Wrap nodes in `Selection.create(doc, nodes)` before passing to commands
 - Set current spread before editing: `doc.executeCommand(DocumentCommand.createSetCurrentSpread(spread))`
+- `Dialog.show()` is deprecated — use `runModal()`
 
 ## Script Patterns
 
@@ -60,8 +103,8 @@ The Affinity MCP server must be running for script execution. Config in `.mimoco
 
 ```js
 "use strict";
-const { Document } = require('/document');
-const { app } = require('/application');
+const { Document } = require('/document.js');
+const { app } = require('/application.js');
 const doc = app.documents.current;
 if (!doc) { console.log('No document open'); return; }
 const spread = doc.spreads.first;
@@ -99,14 +142,16 @@ Located in `.mimocode/skills/affinity-scripting/templates/`:
 Run `affinity-check` on any script before executing. It catches:
 - Missing `"use strict"`
 - `module.exports` usage (forbidden)
-- Unknown import paths (valid: `/application`, `/document`, `/commands`, `/geometry`, `/nodes`, `/shapes`, `/colours`, `/dialog`, `/story`, `/storydelta`, `/glyphatts`, `/paragraphatts`, `/fills`, `/linestyle`, `/selections`, `/collection`, `/network`, `/fs`, `/buffer`, `/timer`, `/units`, `/layereffects`, `/rasterobject`, `affinity:common`, `affinity:dom`, `affinity:story`)
+- Unknown import paths (valid: all `affinity:*` raw modules + JSLib `/....js` wrappers)
+- Extensionless legacy paths (warns to add `.js`)
 - Missing spread setup
 - Preview without `createClearPreviews()`
 
 ## Documentation
 
-- SDK reference: `docs/02-sdk-reference.md` (comprehensive, in Russian)
-- Core API (English): `docs/core-api.md`
-- Tutorial (32 chapters): `docs/affinity-scripting-tutorial.md`
-- Community script patterns: `docs/06-community-scripts.md`
-- MCP tools list: `docs/01-mcp-tools.md`
+- Master index: `docs/00-index.md`
+- SDK v3.3.0 reference (EN): `docs/02-sdk-v3.3.0.md`
+- Migration guide (RU): `docs/03-migration-guide.md`
+- Tutorial (RU): `docs/05-tutorial.md`
+- Script specs: `docs/specs/`
+- MCP tools: `docs/01-mcp-tools.md`
