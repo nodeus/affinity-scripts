@@ -7,13 +7,11 @@
 
 "use strict";
 
-var { Document } = require("/document");
-var { AddChildNodesCommandBuilder, NodeChildType } = require("/commands");
-var { ShapeNodeDefinition } = require("/nodes");
-var { ShapeRectangle } = require("/shapes");
-var { Rectangle } = require("/geometry");
-var { Colour } = require("/colours");
-var { FillDescriptor, SolidFill } = require("/fills");
+var { Document, ShapeNodeDefinition, NodeChildType } = require("affinity:dom");
+var { AddChildNodesCommandBuilder } = require("affinity:commands");
+var { ShapeRectangle, Rectangle } = require("affinity:geometry");
+var { Colour } = require("affinity:colours");
+var { FillDescriptor, SolidFill } = require("affinity:fills");
 var { BlendMode } = require("affinity:common");
 
 var doc = Document.current;
