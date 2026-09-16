@@ -197,7 +197,7 @@ cb.lineTo({ x: x2, y: y2 });
 const curve = cb.createCurve();
 const pc = PolyCurve.create();
 pc.addCurve(curve);
-const nd = PolyCurveNodeDefinition.create(pc, brushFillDesc, lineStyleDesc, penFillDesc, FillDescriptor.createNone());
+const nd = PolyCurveNodeDefinition.create(pc, brushFillDesc, penFillDesc, lineStyleDesc, FillDescriptor.createNone());
 b.addPolyCurveNode(nd);
 ```
 

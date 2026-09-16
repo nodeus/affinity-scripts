@@ -6,7 +6,7 @@
 |-------|-------|
 | **ID** | `chart-builder` |
 | **Name** | Chart Builder |
-| **Version** | `1.4.0` |
+| **Version** | `1.5.1` |
 | **Author** | nodeus |
 | **Status** | `stable` |
 | **SDK** | `>= 3.3.0` |
@@ -53,14 +53,15 @@ Builds line, bar (column), and donut diagrams directly in Affinity from data ent
 4. Show the configuration dialog (see §5).
 5. If the user cancels, log `Cancelled` and stop.
 6. If chart type is Donut and any value is negative, show error and stop (pie slices cannot be negative).
-7. Build all chart geometry into an `AddChildNodesCommandBuilder` batch:
-   - **Line**: axes, grid lines + value labels, polyline per series, data-point value labels, optional category labels.
+7. Create a container group named `line chart` / `bar chart` / `donut chart` (`uniqueGroupName`: collision → `base_2`, `base_3`, … scanning `userDescription` on all spreads); keep its node from `cmd.newNodes`.
+8. Build all chart geometry into an `AddChildNodesCommandBuilder` batch with insertion target set to the group (`setInsertionTarget` + `InsertionMode.InsertAtEnd`):
+   - **Line**: axes, grid lines + value labels, polyline per series (plain lines, no arrowheads), data-point value labels, optional category labels.
    - **Bar**: axes, grid lines + value labels, grouped bars per category with optional corner radius, value labels above/below bars, optional category labels.
    - **Donut**: one donut per series (white backing disc + pie slices), slice labels with optional `%`, center total label, optional per-series legend with color swatches.
-8. Execute the batch as a single command (`NodeChildType.Main`).
-9. Apply stored line styles post-batch via `applyLineStyles()` (line weight, caps, joins, arrow heads) by traversing spreads and matching created PolyCurve nodes in order.
-10. Optionally append a right-side legend (series color swatch + name) for Line/Bar charts.
-11. Log the chart type and size, e.g. `Bar 500x400`.
+9. Execute the batch as a second command (`NodeChildType.Main`) — two undo steps total (group + contents).
+10. Apply stored line weights post-batch via `applyLineStyles()` (direct `lineWeightPts` set, no arrowheads) by traversing spreads and matching created PolyCurve nodes in order.
+11. Optionally append a right-side legend (series color swatch + name) for Line/Bar charts (inside the group).
+12. Log the chart type and size, e.g. `Bar 500x400`.
 
 ## 5. User Interface
 
@@ -86,7 +87,7 @@ Dialog title: `Chart Builder`, initial width 350.
 - `console.log()` messages:
   - `<Type> <W>x<H>` on success, e.g. `Line 500x400`
   - `Cancelled` when the dialog is dismissed
-- No grouping: all nodes are added flat to the spread in one undo step (plus the post-batch line-style pass).
+- Grouping: all nodes live inside a container group `line chart` / `bar chart` / `donut chart` (collision → `base_2`, `base_3`, …); two undo steps total (group + contents).
 
 ## 7. Error Handling
 
@@ -118,13 +119,19 @@ scripts/chart-builder/
 - [ ] Donut chart renders slices, center total, optional `%`
 - [ ] Cancel button → `Cancelled` in console, no nodes created
 - [ ] Donut with negatives → error dialog, no nodes created
-- [ ] Undo restores document
+- [ ] Nodes grouped: `line/bar/donut chart`, re-run → `base_2` suffix
+- [ ] Series lines have no arrowheads
+- [ ] Undo restores document (two steps: contents + group)
 - [ ] `affinity-check` reports no errors (only `affinity:*` imports)
 
 ## 10. Changelog
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.5.1 | 2026-09-17 | Grouping fix: `createSetCurrentSpread` at startup (insertion target was ignored without it, charts landed flat); guard on empty `newNodes` |
+| 1.5.0 | 2026-09-17 | Chart grouped into `line/bar/donut chart` container (`uniqueGroupName` → `base_2`, … on collision; two undo steps); arrowheads removed entirely (plain series lines) |
+| 1.4.2 | 2026-09-17 | Vertical-centre emulation for all labels: `addText` fits frame to text height (`lines×sz×LEAD`, `LEAD=1.2`) and centres on anchor; Donut centre-total block likewise. No vertical-alignment API in SDK (verified: JSLib source, live-object introspection, `docs/JSLib`) |
+| 1.4.1 | 2026-09-17 | Fix `PolyCurveNodeDefinition.create` arg order in `addPolyLine`: `(pc, brushFill, lineFill, lineStyle, none)` per JSLib `nodes.js` — `lineStyle`/`lineFill` were swapped, Line/Bar charts died silently with `expected FillDescriptorHandle` |
 | 1.4.0 | 2026-09-17 | SDK 3.3.0 JSLib imports: `NodeChildType` moved from `/nodes.js` to `/commands.js`, `BlendMode` unified under `/commands.js` |
 | 1.3.1 | — | Negative values support, error popups, grid lines UI |
 | 1.3.0 | — | Label mode, bar corner radius, grid lines, color pickers, parser improvements |

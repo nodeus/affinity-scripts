@@ -1,20 +1,20 @@
 /**
  * name: Chart Builder
  * description: Build bar, column, and pie diagrams based on the data in the text object directly in affinity.
- * version: 1.4.0
+ * version: 1.5.1
  * author: nodeus
  */
 
 "use strict";
 
 const { Document } = require("/document.js");
-const { AddChildNodesCommandBuilder, NodeChildType, BlendMode } = require("/commands.js");
-const { ShapeNodeDefinition, FrameTextNodeDefinition, PolyCurveNodeDefinition } = require("/nodes.js");
+const { AddChildNodesCommandBuilder, NodeChildType, BlendMode, InsertionMode, DocumentCommand } = require("/commands.js");
+const { ShapeNodeDefinition, FrameTextNodeDefinition, PolyCurveNodeDefinition, ContainerNodeDefinition } = require("/nodes.js");
 const { Shape, ShapeType, ShapeRectangle, ShapeCornerType } = require("/shapes.js");
 const { Rectangle, CurveBuilder, PolyCurve } = require("/geometry.js");
 const { Colour } = require("/colours.js");
 const { FillDescriptor, SolidFill } = require("/fills.js");
-const { ArrowHead, ArrowHeadStyle, LineStyleDescriptor } = require("/linestyle.js");
+const { LineStyleDescriptor } = require("/linestyle.js");
 const { StoryBuilder } = require("/storybuilder.js");
 const { GlyphAtts } = require("/glyphatts.js");
 const { Dialog, DialogResult } = require("/dialog.js");
@@ -35,19 +35,25 @@ const PAL=[
 function mkC(r){return Colour.createRGBA8({r:r.r,g:r.g,b:r.b,alpha:255})}
 function mkF(r){return FillDescriptor.createSolid(SolidFill.create(mkC(r)),BlendMode.Normal)}
 function addRect(b,x,y,w,h,c,radius){if(w<=0||h<=0)return;var sh=ShapeRectangle.create();sh.setAbsoluteSizes(true,w,h);var r=radius||0;if(r>0){sh.topLeft.cornerType=ShapeCornerType.Round;sh.topLeft.setRadius(r,w,h);sh.topRight.cornerType=ShapeCornerType.Round;sh.topRight.setRadius(r,w,h);sh.bottomLeft.cornerType=ShapeCornerType.Round;sh.bottomLeft.setRadius(r,w,h);sh.bottomRight.cornerType=ShapeCornerType.Round;sh.bottomRight.setRadius(r,w,h);}b.addNode(ShapeNodeDefinition.create(sh,new Rectangle(x,y,w,h),c?mkF(c):FillDescriptor.createNone(),null,null,null))}
-function addText(b,x,y,w,h,t,sz,c){var ga=GlyphAtts.create();ga.height=sz;ga.brushFill=FillDescriptor.createSolid(SolidFill.create(mkC(c)),BlendMode.Normal);var pa=ParagraphAtts.create();pa.alignXType=1;var sb=StoryBuilder.create();sb.setParagraphAtts(pa);sb.setGlyphAtts(ga);sb.addText(t);b.addNode(FrameTextNodeDefinition.createFromStoryBuilder(new Rectangle(x,y,w,h),sb))}
+function addText(b,x,y,w,h,t,sz,c){var ga=GlyphAtts.create();ga.height=sz;ga.brushFill=FillDescriptor.createSolid(SolidFill.create(mkC(c)),BlendMode.Normal);var pa=ParagraphAtts.create();pa.alignXType=1;var sb=StoryBuilder.create();sb.setParagraphAtts(pa);sb.setGlyphAtts(ga);sb.addText(t);
+// No vertical-alignment API in SDK: fit frame to text height, centre on anchor (emulates Centre Vertically)
+var lines=t.split("\n").length;var newH=lines*sz*LEAD;if(newH>h||newH<=0)newH=h;var ny=y+(h-newH)/2;b.addNode(FrameTextNodeDefinition.createFromStoryBuilder(new Rectangle(x,ny,w,newH),sb))}
 function getCol(cc,si,di){return(cc&&cc[di!==undefined?di:si])?cc[di!==undefined?di:si]:PAL[si%PAL.length]}
+
+// Empirical line-height factor for vertical-centre emulation (no API in SDK)
+var LEAD=1.2;
 
 // PolyCurve line - stores settings for post-batch application
 function addPolyLine(b,x1,y1,x2,y2,sw,c){
   var cb=CurveBuilder.create();cb.begin({x:x1,y:y1});cb.lineTo({x:x2,y:y2});
   var curve=cb.createCurve();
   var pc=PolyCurve.create();pc.addCurve(curve);
+  // JSLib signature: create(curve, brushFill, lineFill, lineStyle, transparencyFill)
   var nd=PolyCurveNodeDefinition.create(
     pc,
     FillDescriptor.createSolid(SolidFill.create(Colour.createRGBA8({r:0,g:0,b:0,alpha:0})),BlendMode.Normal),
-    LineStyleDescriptor.createDefault(sw),
     FillDescriptor.createSolid(SolidFill.create(mkC(c)),BlendMode.Normal),
+    LineStyleDescriptor.createDefault(sw),
     FillDescriptor.createNone()
   );
   b.addPolyCurveNode(nd);
@@ -66,13 +72,6 @@ function applyLineStyles(doc,builder){
     if(node.isPolyCurveNode){
       var s=styles[si];
       node.lineWeightPts=s.weight;
-      var lsd=LineStyleDescriptor.createDefault(s.weight);
-      lsd.lineStyle.cap=s.cap;lsd.lineStyle.join=s.join;lsd.lineStyle.type=s.type;
-      lsd.lineStyle.miterLimit=s.miterLimit||2;
-      var front=ArrowHead.create(ArrowHeadStyle.Circle,{scaleX:1.5,scaleY:1.5});
-      var back=ArrowHead.create(ArrowHeadStyle.Circle,{scaleX:1.5,scaleY:1.5});
-      var lsdWithArrows=lsd.cloneWithNewArrowHeads(front,back);
-      node.lineStyleInterface.setCurrentLineStyle(lsdWithArrows.lineStyle);
       si++;
     }
     if(node.children){
@@ -286,14 +285,15 @@ function buildSingleDonut(b,vals,ox,oy,ds,ir,showPercent,colors){
     sa+=sw2;
   }
 
-  var ga=GlyphAtts.create();ga.height=Math.max(14,ds*0.1);
+  var ga=GlyphAtts.create();var bigH=Math.max(14,ds*0.1);ga.height=bigH;
   ga.brushFill=FillDescriptor.createSolid(SolidFill.create(mkC({r:50,g:50,b:50})),BlendMode.Normal);
   var pa=ParagraphAtts.create();pa.alignXType=1;
   var sb=StoryBuilder.create();sb.setParagraphAtts(pa);sb.setGlyphAtts(ga);sb.addText(total.toString());
-  var ga2=GlyphAtts.create();ga2.height=Math.max(9,ds*0.04);
+  var ga2=GlyphAtts.create();var smallH=Math.max(9,ds*0.04);ga2.height=smallH;
   ga2.brushFill=FillDescriptor.createSolid(SolidFill.create(mkC({r:120,g:120,b:120})),BlendMode.Normal);
   sb.setGlyphAtts(ga2);sb.addText("\ntotal");
-  b.addNode(FrameTextNodeDefinition.createFromStoryBuilder(new Rectangle(ox+cx-ds*0.2,oy+cy-ds*0.12,ds*0.4,ds*0.24),sb));
+  var totH=(bigH+smallH)*LEAD,totBoxH=ds*0.24;if(totH>totBoxH||totH<=0)totH=totBoxH;
+  b.addNode(FrameTextNodeDefinition.createFromStoryBuilder(new Rectangle(ox+cx-ds*0.2,oy+cy-totH/2,ds*0.4,totH),sb));
 }
 
 function buildDonut(b,data,cfg){
@@ -315,8 +315,35 @@ function buildDonut(b,data,cfg){
   }
 }
 
+function uniqueGroupName(doc,base){
+  var taken={};
+  function walk(node){
+    try{if(node.userDescription)taken[node.userDescription]=true;}catch(e){}
+    var ch=null;try{ch=node.children;}catch(e){}
+    if(ch){for(var i=0;i<ch.length;i++){try{walk(ch.at(i));}catch(e){}}}
+  }
+  for(var s=0;s<doc.spreads.length;s++){
+    var sp=doc.spreads.at(s);
+    for(var i=0;i<sp.children.length;i++){try{walk(sp.children.at(i));}catch(e){}}
+  }
+  if(!taken[base])return base;
+  var n=2;while(taken[base+"_"+n])n++;
+  return base+"_"+n;
+}
+
 function renderChart(doc,data,cfg){
+  var names=["line chart","bar chart","donut chart"];
+  var g=AddChildNodesCommandBuilder.create();
+  g.addContainerNode(ContainerNodeDefinition.create(uniqueGroupName(doc,names[cfg.chartType])));
+  var gcmd=g.createCommand(true,NodeChildType.Main);
+  doc.executeCommand(gcmd);
+  var groupNode=(gcmd.newNodes&&gcmd.newNodes.length>0)?gcmd.newNodes.at(0):null;
+
   var b=AddChildNodesCommandBuilder.create();
+  if(groupNode){
+    b.setInsertionTarget(groupNode);
+    b.setInsertionMode(InsertionMode.InsertAtEnd);
+  }
   if(cfg.chartType===0)buildLine(b,data,cfg);
   else if(cfg.chartType===1)buildBar(b,data,cfg);
   else buildDonut(b,data,cfg);
@@ -346,6 +373,8 @@ if(!doc){showError("No document");return;}
 var textNode=null;
 for(var i=0;i<doc.selection.nodes.length;i++){if(doc.selection.nodes.at(i).isFrameTextNode){textNode=doc.selection.nodes.at(i);break;}}
 if(!textNode){showError("Select a text frame");return;}
+var spread=doc.currentSpread;if(!spread)spread=doc.spreads.first;
+doc.executeCommand(DocumentCommand.createSetCurrentSpread(spread));
 
 var text=textNode.storyInterface.story.getText(0,textNode.storyInterface.story.length);
 var data=parseData(text);

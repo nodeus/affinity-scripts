@@ -8,6 +8,7 @@ Script for Affinity that builds bar, column, and pie diagrams based on the data 
 - **Bar Chart** — grouped bars with auto-palette colors
 - **Donut Chart** — pie slices with inner radius, % and value labels
 - **Legend** — optional legend for series
+- **Layer groups** — each chart lands in a named layer (`line chart`, `bar chart`, `donut chart`; re-runs get `_2`, `_3`, …)
 
 ## Data Format
 
