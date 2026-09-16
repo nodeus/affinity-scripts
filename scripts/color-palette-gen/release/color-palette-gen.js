@@ -8,8 +8,8 @@
 "use strict";
 
 const { Document } = require('/document.js');
-const { DocumentCommand, AddChildNodesCommandBuilder, NodeMoveType } = require('/commands.js');
-const { ShapeNodeDefinition, FrameTextNodeDefinition, ContainerNodeDefinition, NodeChildType } = require('/nodes.js');
+const { DocumentCommand, AddChildNodesCommandBuilder, NodeMoveType, NodeChildType, BlendMode } = require('/commands.js');
+const { ShapeNodeDefinition, FrameTextNodeDefinition, ContainerNodeDefinition } = require('/nodes.js');
 const { Shape, ShapeType } = require('/shapes.js');
 const { Rectangle, Transform } = require('/geometry.js');
 const { Colour, ColourProfileSet } = require('/colours.js');
@@ -17,7 +17,6 @@ const { FillDescriptor, SolidFill, FillType, GradientFill, GradientFillType } = 
 const { StoryBuilder } = require('/storybuilder.js');
 const { GlyphAtts } = require('/glyphatts.js');
 const { Selection } = require('/selections.js');
-const { BlendMode } = require('affinity:common');
 
 const SWATCH = 40, GAP = 4, MARGIN = 50, LABEL_W = 160, LABEL_H = 80, HEADER_H = 24, SECTION_GAP = 40;
 const CELL_W = Math.max(SWATCH, LABEL_W), CELL_H = SWATCH + GAP + LABEL_H;

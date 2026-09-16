@@ -8,7 +8,7 @@
 "use strict";
 
 const { Document } = require("/document.js");
-const { AddChildNodesCommandBuilder, NodeChildType } = require("/commands.js");
+const { AddChildNodesCommandBuilder, NodeChildType, BlendMode } = require("/commands.js");
 const { ShapeNodeDefinition, FrameTextNodeDefinition, PolyCurveNodeDefinition } = require("/nodes.js");
 const { Shape, ShapeType, ShapeRectangle, ShapeCornerType } = require("/shapes.js");
 const { Rectangle, CurveBuilder, PolyCurve } = require("/geometry.js");
@@ -19,7 +19,6 @@ const { StoryBuilder } = require("/storybuilder.js");
 const { GlyphAtts } = require("/glyphatts.js");
 const { Dialog, DialogResult } = require("/dialog.js");
 const { UnitType } = require("/units.js");
-const { BlendMode } = require("affinity:common");
 const { ParagraphAtts } = require("/paragraphatts.js");
 
 const PAL=[
