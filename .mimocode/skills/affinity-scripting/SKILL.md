@@ -310,7 +310,7 @@ const { SVG11 } = require('/colours.js');
 const navy = SVG11.colorName('Navy');
 
 // Gradients
-const { Gradient } = require('/colours');
+const { Gradient } = require('/colours.js');
 const grad = Gradient.create([
   { offset: 0, colour: RGBA8(255, 0, 0, 255) },
   { offset: 1, colour: RGBA8(0, 0, 255, 255) }
