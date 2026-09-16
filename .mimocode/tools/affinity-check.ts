@@ -23,13 +23,43 @@ function checkScript(script: string): Issue[] {
   // Check imports
   const requireMatches = script.matchAll(/require\(['"]([^'"]+)['"]\)/g)
   const validModules = [
+    // JSLib wrappers (preferred, with .js)
+    "/application.js", "/document.js", "/commands.js", "/geometry.js",
+    "/nodes.js", "/shapes.js", "/colours.js", "/dialog.js", "/story.js",
+    "/storydelta.js", "/glyphatts.js", "/paragraphatts.js", "/fills.js",
+    "/linestyle.js", "/selections.js", "/collection.js", "/network.js",
+    "/fs.js", "/buffer.js", "/timers.js", "/units.js", "/layereffects.js",
+    "/rasterobject.js", "/storybuilder.js",
+    // JSLib wrappers (legacy extensionless — warn to add .js)
     "/application", "/document", "/commands", "/geometry", "/nodes",
     "/shapes", "/colours", "/dialog", "/story", "/storydelta",
     "/glyphatts", "/paragraphatts", "/fills", "/linestyle", "/selections",
     "/collection", "/network", "/fs", "/buffer", "/timer", "/units",
-    "/layereffects", "/rasterobject", "affinity:common", "affinity:dom",
-    "affinity:story",
+    "/layereffects", "/rasterobject",
+    // Raw SDK modules (enum-only, for BlendMode, UnitType, etc.)
+    "affinity:application", "affinity:brushes", "affinity:buffer",
+    "affinity:colours", "affinity:commands", "affinity:common",
+    "affinity:dom", "affinity:fills", "affinity:fonts", "affinity:fs",
+    "affinity:geometry", "affinity:hatches", "affinity:layereffects",
+    "affinity:linestyles", "affinity:network", "affinity:os",
+    "affinity:raster", "affinity:story", "affinity:timers", "affinity:ui",
   ]
+
+  // JSLib modules that exist without .js in legacy code but should use .js form
+  const legacyToModern: Record<string, string> = {
+    "/application": "/application.js", "/document": "/document.js",
+    "/commands": "/commands.js", "/geometry": "/geometry.js",
+    "/nodes": "/nodes.js", "/shapes": "/shapes.js",
+    "/colours": "/colours.js", "/dialog": "/dialog.js",
+    "/story": "/story.js", "/storydelta": "/storydelta.js",
+    "/glyphatts": "/glyphatts.js", "/paragraphatts": "/paragraphatts.js",
+    "/fills": "/fills.js", "/linestyle": "/linestyle.js",
+    "/selections": "/selections.js", "/collection": "/collection.js",
+    "/network": "/network.js", "/fs": "/fs.js",
+    "/buffer": "/buffer.js", "/timer": "/timers.js",
+    "/units": "/units.js", "/layereffects": "/layereffects.js",
+    "/rasterobject": "/rasterobject.js",
+  }
 
   for (const match of requireMatches) {
     const modulePath = match[1]
@@ -39,6 +69,13 @@ function checkScript(script: string): Issue[] {
         line: lineNum,
         severity: "warning",
         message: `Unknown module "${modulePath}" — verify import path`,
+      })
+    } else if (legacyToModern[modulePath]) {
+      const lineNum = script.substring(0, match.index).split("\n").length
+      issues.push({
+        line: lineNum,
+        severity: "info",
+        message: `Use "${legacyToModern[modulePath]}" instead of "${modulePath}" (SDK 3.3.0 .js form)`,
       })
     }
   }
@@ -74,7 +111,7 @@ function checkScript(script: string): Issue[] {
   }
 
   // Check for file system usage
-  if (script.includes("require('/fs')") && !script.includes("app.userDesktopPath")) {
+  if ((script.includes("require('/fs')") || script.includes("require('/fs.js')")) && !script.includes("app.userDesktopPath")) {
     issues.push({ line: -1, severity: "info", message: "File system access is restricted to Desktop (app.userDesktopPath)" })
   }
 

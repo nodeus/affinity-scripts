@@ -1,6 +1,6 @@
 # Практический учебник: скриптинг Affinity (SDK 3.3.0)
 
-> Консолидированный практикум. Все примеры — с импортами `affinity:*` (SDK ≥ 3.3.0).
+> Консолидированный практикум. Все примеры — с импортами JSLib `/....js` (SDK ≥ 3.3.0).
 > Старые развёрнутые учебники сохранены в `archive/old-docs/` (пути `/...` там устарели —
 > сверяйтесь с [03-migration-guide.md](03-migration-guide.md)).
 > API-справочник: [02-sdk-v3.3.0.md](02-sdk-v3.3.0.md).
@@ -20,7 +20,7 @@
 
 ```js
 "use strict";
-const { Document } = require('affinity:dom');
+const { Document } = require('/document.js');
 const doc = Document.current;
 if (!doc) { console.log('No document open'); return; }
 console.log('Open: ' + doc.title);
@@ -32,8 +32,8 @@ console.log('Open: ' + doc.title);
 
 ```js
 "use strict";
-const { Document } = require('affinity:dom');
-const { DocumentCommand } = require('affinity:commands');
+const { Document } = require('/document.js');
+const { DocumentCommand } = require('/commands.js');
 
 const doc = Document.current;
 if (!doc) { console.log('No document open'); return; }
@@ -72,14 +72,14 @@ for (const n of sel.nodes) console.log(n.name + ' frameText=' + n.isFrameTextNod
 Для команд узлы оборачиваются:
 
 ```js
-const { Selection } = require('affinity:dom');
+const { Selection } = require('/selections.js');
 const wrapped = Selection.create(doc, someNode);
 ```
 
 Текстовое выделение (диапазон внутри story):
 
 ```js
-const { Selection, TextSelection } = require('affinity:dom');
+const { Selection, TextSelection } = require('/selections.js');
 const textSel = TextSelection.create([{ begin: pos, end: pos + 1 }]);
 const sel = Selection.create(doc, textNode);
 sel.addSubSelectionForNode(textNode, textSel);
@@ -93,8 +93,9 @@ sel.addSubSelectionForNode(textNode, textSel);
 
 ```js
 "use strict";
-const { Document, Selection } = require('affinity:dom');
-const { DocumentCommand } = require('affinity:commands');
+const { Document } = require('/document.js');
+const { Selection } = require('/selections.js');
+const { DocumentCommand } = require('/commands.js');
 
 const doc = Document.current;
 const spread = doc.currentSpread;
@@ -107,7 +108,7 @@ doc.executeCommand(DocumentCommand.createSetVisibility(sel, false)); // прим
 Одна отмена на несколько команд — `CompoundCommandBuilder`:
 
 ```js
-const { CompoundCommandBuilder } = require('affinity:commands');
+const { CompoundCommandBuilder } = require('/commands.js');
 const compound = CompoundCommandBuilder.create();
 compound.addCommand(cmd1);
 compound.addCommand(cmd2);
@@ -117,7 +118,7 @@ doc.executeCommand(compound.createCommand());
 Пакетное создание узлов — `AddChildNodesCommandBuilder`:
 
 ```js
-const { AddChildNodesCommandBuilder, NodeChildType } = require('affinity:commands');
+const { AddChildNodesCommandBuilder, NodeChildType } = require('/commands.js');
 const b = AddChildNodesCommandBuilder.create();
 b.addNode(someNodeDefinition);
 doc.executeCommand(b.createCommand(true, NodeChildType.Main));
@@ -149,12 +150,12 @@ function onCancel() {
 
 ```js
 "use strict";
-const { Document } = require('affinity:dom');
-const { AddChildNodesCommandBuilder, NodeChildType } = require('affinity:commands');
-const { ShapeNodeDefinition } = require('affinity:dom');
-const { Shape, ShapeType, ShapeRectangle, ShapeCornerType, Rectangle } = require('affinity:geometry');
-const { Colour } = require('affinity:colours');
-const { FillDescriptor, SolidFill } = require('affinity:fills');
+const { Document } = require('/document.js');
+const { AddChildNodesCommandBuilder, NodeChildType } = require('/commands.js');
+const { ShapeNodeDefinition } = require('/nodes.js');
+const { Shape, ShapeType, ShapeRectangle, ShapeCornerType, Rectangle } = require('/geometry.js');
+const { Colour } = require('/colours.js');
+const { FillDescriptor, SolidFill } = require('/fills.js');
 const { BlendMode } = require('affinity:common');
 
 const doc = Document.current;
@@ -187,8 +188,8 @@ sh.topLeft.setRadius(r, w, h);
 ## Глава 7. Кривые
 
 ```js
-const { CurveBuilder, PolyCurve, Rectangle } = require('affinity:geometry');
-const { PolyCurveNodeDefinition } = require('affinity:dom');
+const { CurveBuilder, PolyCurve, Rectangle } = require('/geometry.js');
+const { PolyCurveNodeDefinition } = require('/nodes.js');
 
 const cb = CurveBuilder.create();
 cb.begin({ x: x1, y: y1 });
@@ -208,8 +209,8 @@ b.addPolyCurveNode(nd);
 ## Глава 8. Цвета и заливки
 
 ```js
-const { Colour, ColourProfileSet } = require('affinity:colours');
-const { FillDescriptor, SolidFill, FillType } = require('affinity:fills');
+const { Colour, ColourProfileSet } = require('/colours.js');
+const { FillDescriptor, SolidFill, FillType } = require('/fills.js');
 
 const c = Colour.createRGBA8({ r: 10, g: 20, b: 30, alpha: 255 });
 const rgb = c.rgba8;                 // { r, g, b, alpha }
@@ -247,7 +248,9 @@ const text = story.getText(range.begin, range.end - range.begin);
 Создание текстового фрейма:
 
 ```js
-const { StoryBuilder, GlyphAtts, ParagraphAtts } = require('affinity:story');
+const { StoryBuilder } = require('/storybuilder.js');
+const { GlyphAtts } = require('/glyphatts.js');
+const { ParagraphAtts } = require('/paragraphatts.js');
 
 const ga = GlyphAtts.create();
 ga.height = 12;
@@ -264,7 +267,7 @@ b.addNode(FrameTextNodeDefinition.createFromStoryBuilder(new Rectangle(x, y, w, 
 Замена фрагмента (неразрывный пробел и т.п.):
 
 ```js
-const { DocumentCommand, CompoundCommandBuilder } = require('affinity:commands');
+const { DocumentCommand, CompoundCommandBuilder } = require('/commands.js');
 const compound = CompoundCommandBuilder.create();
 const textSel = TextSelection.create([{ begin: storyPos, end: storyPos + 1 }]);
 const sel = Selection.create(doc, textNode);
@@ -280,8 +283,8 @@ doc.executeCommand(compound.createCommand());
 ## Глава 10. Диалоги
 
 ```js
-const { Dialog, DialogResult } = require('affinity:ui');
-const { UnitType } = require('affinity:common');
+const { Dialog, DialogResult } = require('/dialog.js');
+const { UnitType } = require('/units.js');
 
 const dlg = Dialog.create('My Dialog');
 dlg.initialWidth = 350;
@@ -344,10 +347,10 @@ doc.colourise();
 ## Глава 13. Файлы и сеть
 
 ```js
-const { app } = require('affinity:application');
+const { app } = require('/application.js');
 const desktop = app.userDesktopPath; // ТОЛЬКО Desktop!
 
-const { HttpRequest, RequestMethod } = require('affinity:network');
+const { HttpRequest, RequestMethod } = require('/network.js');
 const req = HttpRequest.create('https://api.example.com/data', RequestMethod.GET);
 req.setTimeoutInSec(30);
 const { response } = req.do();

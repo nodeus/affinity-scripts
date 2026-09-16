@@ -1,7 +1,7 @@
 "use strict";
 
-const { Document } = require('/document');
-const { app } = require('/application');
+const { Document } = require('/document.js');
+const { app } = require('/application.js');
 
 const doc = app.documents.current;
 if (!doc) {

@@ -1,12 +1,12 @@
 "use strict";
 
-const { Document } = require('/document');
-const { DocumentCommand, CompoundCommandBuilder } = require('/commands');
-const { Selection } = require('/selections');
-const { Dialog, DialogResult } = require('/dialog');
-const { UnitType } = require('/units');
-const { RGBA8 } = require('/colours');
-const { app } = require('/application');
+const { Document } = require('/document.js');
+const { DocumentCommand, CompoundCommandBuilder } = require('/commands.js');
+const { Selection } = require('/selections.js');
+const { Dialog, DialogResult } = require('/dialog.js');
+const { UnitType } = require('/units.js');
+const { RGBA8 } = require('/colours.js');
+const { app } = require('/application.js');
 
 const doc = app.documents.current;
 if (!doc) { console.log('No document open'); return; }
@@ -55,7 +55,7 @@ const sizeEditor = grp.addUnitValueEditor('Scale (%):', 100, UnitType.Number);
 sizeEditor.onValueChangedHandler = applyPreview;
 dlg.onControlValueChangedHandler = applyPreview;
 
-const result = dlg.show();
+const result = dlg.runModal();
 if (result === DialogResult.Ok) {
   onOK();
   console.log('Applied');

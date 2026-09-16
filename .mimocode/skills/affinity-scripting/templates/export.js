@@ -1,7 +1,7 @@
 "use strict";
 
-const { Document, FileExportOptions } = require('/document');
-const { app } = require('/application');
+const { Document, FileExportOptions } = require('/document.js');
+const { app } = require('/application.js');
 
 const doc = app.documents.current;
 if (!doc) { console.log('No document open'); return; }

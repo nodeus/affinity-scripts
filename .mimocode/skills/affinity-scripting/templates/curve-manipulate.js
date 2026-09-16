@@ -1,10 +1,10 @@
 "use strict";
 
-const { Document } = require('/document');
-const { DocumentCommand } = require('/commands');
-const { Selection } = require('/selections');
-const { Transform } = require('/geometry');
-const { app } = require('/application');
+const { Document } = require('/document.js');
+const { DocumentCommand } = require('/commands.js');
+const { Selection } = require('/selections.js');
+const { Transform } = require('/geometry.js');
+const { app } = require('/application.js');
 
 const doc = app.documents.current;
 if (!doc) { console.log('No document open'); return; }

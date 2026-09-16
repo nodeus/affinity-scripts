@@ -19,13 +19,17 @@ Extracts every fill, stroke, and gradient color used on the current spread and r
 
 - An open document with at least one object on the **current spread**
 - No selection required — the whole current spread is scanned (recursively, including nested children)
-- SDK modules used:
-  - `affinity:dom` — `Document`, `ShapeNodeDefinition`, `FrameTextNodeDefinition`, `ContainerNodeDefinition`, `Selection`
-  - `affinity:commands` — `DocumentCommand`, `AddChildNodesCommandBuilder`, `NodeChildType`, `NodeMoveType`
-  - `affinity:geometry` — `Shape`, `ShapeType`, `Rectangle`, `Transform`
-  - `affinity:colours` — `Colour`, `ColourProfileSet`
-  - `affinity:fills` — `FillDescriptor`, `SolidFill`, `FillType`, `GradientFill`, `GradientFillType`
-  - `affinity:story` — `StoryBuilder`, `GlyphAtts`
+- SDK modules used (JSLib `/....js` + `affinity:common`):
+  - `/document.js` — `Document`
+  - `/commands.js` — `DocumentCommand`, `AddChildNodesCommandBuilder`, `NodeMoveType`
+  - `/nodes.js` — `ShapeNodeDefinition`, `FrameTextNodeDefinition`, `ContainerNodeDefinition`, `NodeChildType`
+  - `/shapes.js` — `Shape`, `ShapeType`
+  - `/geometry.js` — `Rectangle`, `Transform`
+  - `/colours.js` — `Colour`, `ColourProfileSet`
+  - `/fills.js` — `FillDescriptor`, `SolidFill`, `FillType`, `GradientFill`, `GradientFillType`
+  - `/storybuilder.js` — `StoryBuilder`
+  - `/glyphatts.js` — `GlyphAtts`
+  - `/selections.js` — `Selection`
   - `affinity:common` — `BlendMode`
 
 ## 4. Behavior
@@ -96,4 +100,4 @@ scripts/color-palette-gen/
 | Version | Date | Change |
 |---------|------|--------|
 | 9.1.1 | — | Current stable (pre-migration baseline) |
-| 10.0.0 | 2026-09-16 | SDK 3.3.0 migration: all imports moved to `affinity:*` module paths |
+| 10.0.0 | 2026-09-16 | SDK 3.3.0 migration: all imports moved to `/....js` JSLib form |

@@ -1,13 +1,13 @@
 "use strict";
 
-const { Document } = require('/document');
-const { DocumentCommand } = require('/commands');
-const { Selection, TextSelection } = require('/selections');
-const { StoryBuilder } = require('/story');
-const { StoryDelta } = require('/storydelta');
-const { GlyphAtts } = require('/glyphatts');
-const { RGBA8 } = require('/colours');
-const { app } = require('/application');
+const { Document } = require('/document.js');
+const { DocumentCommand } = require('/commands.js');
+const { Selection, TextSelection } = require('/selections.js');
+const { StoryBuilder } = require('/story.js');
+const { StoryDelta } = require('/storydelta.js');
+const { GlyphAtts } = require('/glyphatts.js');
+const { RGBA8 } = require('/colours.js');
+const { app } = require('/application.js');
 
 const doc = app.documents.current;
 if (!doc) { console.log('No document open'); return; }

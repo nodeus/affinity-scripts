@@ -7,15 +7,20 @@
 
 "use strict";
 
-const { Document, ShapeNodeDefinition, FrameTextNodeDefinition, PolyCurveNodeDefinition } = require("affinity:dom");
-const { AddChildNodesCommandBuilder, NodeChildType } = require("affinity:commands");
-const { Shape, ShapeType, ShapeRectangle, ShapeCornerType, Rectangle, CurveBuilder, PolyCurve } = require("affinity:geometry");
-const { Colour } = require("affinity:colours");
-const { FillDescriptor, SolidFill } = require("affinity:fills");
-const { ArrowHead, ArrowHeadStyle, LineStyleDescriptor } = require("affinity:linestyles");
-const { StoryBuilder, GlyphAtts, ParagraphAtts } = require("affinity:story");
-const { Dialog, DialogResult } = require("affinity:ui");
-const { BlendMode, UnitType } = require("affinity:common");
+const { Document } = require("/document.js");
+const { AddChildNodesCommandBuilder, NodeChildType } = require("/commands.js");
+const { ShapeNodeDefinition, FrameTextNodeDefinition, PolyCurveNodeDefinition } = require("/nodes.js");
+const { Shape, ShapeType, ShapeRectangle, ShapeCornerType } = require("/shapes.js");
+const { Rectangle, CurveBuilder, PolyCurve } = require("/geometry.js");
+const { Colour } = require("/colours.js");
+const { FillDescriptor, SolidFill } = require("/fills.js");
+const { ArrowHead, ArrowHeadStyle, LineStyleDescriptor } = require("/linestyle.js");
+const { StoryBuilder } = require("/storybuilder.js");
+const { GlyphAtts } = require("/glyphatts.js");
+const { Dialog, DialogResult } = require("/dialog.js");
+const { UnitType } = require("/units.js");
+const { BlendMode } = require("affinity:common");
+const { ParagraphAtts } = require("/paragraphatts.js");
 
 const PAL=[
   {r:66,g:133,b:244},{r:234,g:67,b:53},{r:251,g:188,b:4},{r:52,g:168,b:83},

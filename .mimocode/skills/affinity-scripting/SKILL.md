@@ -132,55 +132,55 @@ Read file: .mimocode/skills/affinity-scripting/templates/shape-create.js
 ### Core
 
 ```js
-const { app } = require('/application');
-const { Document, NewDocumentOptions, FileExportOptions } = require('/document');
-const { DocumentCommand, CompoundCommandBuilder, AddChildNodesCommandBuilder } = require('/commands');
+const { app } = require('/application.js');
+const { Document, NewDocumentOptions, FileExportOptions } = require('/document.js');
+const { DocumentCommand, CompoundCommandBuilder, AddChildNodesCommandBuilder } = require('/commands.js');
 ```
 
 ### Geometry & Shapes
 
 ```js
-const { Transform, Curve, CurveBuilder, PolyCurve, Point, Vector, Rectangle, Size } = require('/geometry');
-const { Shape, ShapeRectangle, ShapeStar } = require('/shapes');
+const { Transform, Curve, CurveBuilder, PolyCurve, Point, Vector, Rectangle, Size } = require('/geometry.js');
+const { Shape, ShapeRectangle, ShapeStar } = require('/shapes.js');
 ```
 
 ### Nodes & Selection
 
 ```js
-const { Node, ContainerNodeDefinition, PolyCurveNodeDefinition, FrameTextNodeDefinition } = require('/nodes');
-const { Selection, TextSelection } = require('/selections');
+const { Node, ContainerNodeDefinition, PolyCurveNodeDefinition, FrameTextNodeDefinition } = require('/nodes.js');
+const { Selection, TextSelection } = require('/selections.js');
 ```
 
 ### Colors & Fills
 
 ```js
-const { Colour, SVG11, Gradient } = require('/colours');
-const { FillDescriptor, SolidFill, GradientFill, FillType } = require('/fills');
-const { LineStyle, LineStyleDescriptor } = require('/linestyle');
+const { Colour, SVG11, Gradient } = require('/colours.js');
+const { FillDescriptor, SolidFill, GradientFill, FillType } = require('/fills.js');
+const { LineStyle, LineStyleDescriptor } = require('/linestyle.js');
 ```
 
 ### Text
 
 ```js
-const { Story, StoryBuilder } = require('/story');
-const { StoryDelta } = require('/storydelta');
-const { GlyphAtts } = require('/glyphatts');
-const { ParagraphAtts } = require('/paragraphatts');
+const { Story, StoryBuilder } = require('/story.js');
+const { StoryDelta } = require('/storydelta.js');
+const { GlyphAtts } = require('/glyphatts.js');
+const { ParagraphAtts } = require('/paragraphatts.js');
 ```
 
 ### UI & Dialogs
 
 ```js
-const { Dialog, DialogResult } = require('/dialog');
+const { Dialog, DialogResult } = require('/dialog.js');
 ```
 
 ### Utilities
 
 ```js
-const { UnitType, UnitValue } = require('/units');
-const { HttpRequest } = require('/network');
-const { File, Directory } = require('/fs');
-const { Buffer } = require('/buffer');
+const { UnitType, UnitValue } = require('/units.js');
+const { HttpRequest } = require('/network.js');
+const { File, Directory } = require('/fs.js');
+const { Buffer } = require('/buffer.js');
 ```
 
 ## Common Patterns
@@ -190,8 +190,8 @@ const { Buffer } = require('/buffer');
 ```js
 "use strict";
 
-const { Document } = require('/document');
-const { app } = require('/application');
+const { Document } = require('/document.js');
+const { app } = require('/application.js');
 
 const doc = app.documents.current;
 if (!doc) {
@@ -211,8 +211,8 @@ console.log('Done');
 Every mutation goes through `DocumentCommand` factories executed via `doc.executeCommand()`:
 
 ```js
-const { DocumentCommand } = require('/commands');
-const { Selection } = require('/selections');
+const { DocumentCommand } = require('/commands.js');
+const { Selection } = require('/selections.js');
 
 const sel = Selection.create(doc, doc.selection.nodes);
 const cmd = DocumentCommand.createTransform(sel, Transform.createTranslate(100, 50));
@@ -222,7 +222,7 @@ doc.executeCommand(cmd);
 ### 3. Compound Commands (Single Undo)
 
 ```js
-const { CompoundCommandBuilder } = require('/commands');
+const { CompoundCommandBuilder } = require('/commands.js');
 
 const builder = CompoundCommandBuilder.createCommand();
 builder.add(DocumentCommand.createSetBrushFill(sel, fill1));
@@ -275,7 +275,7 @@ doc.executeCommand(DocumentCommand.createSetCurves(node.curvesInterface, poly));
 ### 6. Shape Creation
 
 ```js
-const { Shape } = require('/shapes');
+const { Shape } = require('/shapes.js');
 
 const rect = Shape.createRectangle(spread);
 rect.width = 200;
@@ -293,7 +293,7 @@ ellipse.height = 80;
 ### 7. Color Creation
 
 ```js
-const { RGBA8, RGB8, CMYKf, HSLf } = require('/colours');
+const { RGBA8, RGB8, CMYKf, HSLf } = require('/colours.js');
 
 // Direct constructors
 const red = RGBA8(255, 0, 0, 255);
@@ -306,7 +306,7 @@ const cmyk = CMYKf(0.0, 1.0, 1.0, 0.0);
 const hsl = HSLf(0.0, 1.0, 0.5);
 
 // SVG named colors
-const { SVG11 } = require('/colours');
+const { SVG11 } = require('/colours.js');
 const navy = SVG11.colorName('Navy');
 
 // Gradients
@@ -320,8 +320,8 @@ const grad = Gradient.create([
 ### 8. Dialog with Live Preview
 
 ```js
-const { Dialog } = require('/dialog');
-const { UnitType } = require('/units');
+const { Dialog } = require('/dialog.js');
+const { UnitType } = require('/units.js');
 
 const dlg = Dialog.create('My Tool');
 
@@ -336,7 +336,7 @@ const okBtn = grp.addButtonSet(['OK', 'Cancel']);
 sizeEditor.onValueChangedHandler = () => applyPreview();
 dlg.onControlValueChangedHandler = () => applyPreview();
 
-if (dlg.show() === DialogResult.Ok) {
+if (dlg.runModal() === DialogResult.Ok) {
   onOK();
 } else {
   onCancel();
@@ -346,8 +346,8 @@ if (dlg.show() === DialogResult.Ok) {
 ### 9. Text Formatting
 
 ```js
-const { StoryBuilder } = require('/story');
-const { GlyphAtts } = require('/glyphatts');
+const { StoryBuilder } = require('/storybuilder.js');
+const { GlyphAtts } = require('/glyphatts.js');
 
 const story = StoryBuilder.create();
 story.addText('Hello World');
@@ -367,7 +367,7 @@ doc.executeCommand(DocumentCommand.createFormatText(
 ### 10. Export
 
 ```js
-const { FileExportOptions } = require('/document');
+const { FileExportOptions } = require('/document.js');
 
 const presets = FileExportOptions.enumeratePresetNames(doc);
 console.log('Available presets:', presets);
@@ -440,7 +440,7 @@ for (const spread of doc.spreads) {
 ### 14. HTTP Requests
 
 ```js
-const { HttpRequest, RequestMethod } = require('/network');
+const { HttpRequest, RequestMethod } = require('/network.js');
 
 // Synchronous
 const req = HttpRequest.create('https://api.example.com/data', RequestMethod.Get);
@@ -459,8 +459,8 @@ req2.doAsync((response) => {
 ### 15. File System (Desktop Only)
 
 ```js
-const { File } = require('/fs');
-const { app } = require('/application');
+const { File } = require('/fs.js');
+const { app } = require('/application.js');
 
 const desktopPath = app.userDesktopPath;
 const filePath = `${desktopPath}/output.txt`;
@@ -520,7 +520,7 @@ doc.history        // Undo history
 ## Unit Types
 
 ```js
-const { UnitType } = require('/units');
+const { UnitType } = require('/units.js');
 
 UnitType.Pixel
 UnitType.Point
@@ -535,7 +535,7 @@ UnitType.Percentage
 ## Layer Effects
 
 ```js
-const { LayerEffect } = require('/layereffects');
+const { LayerEffect } = require('/layereffects.js');
 
 // Available effect types:
 // OuterShadowLayerEffect
@@ -553,7 +553,7 @@ const { LayerEffect } = require('/layereffects');
 ## Blend Modes
 
 ```js
-const { BlendMode } = require('/commands');
+const { BlendMode } = require('affinity:common');
 
 // Common modes:
 BlendMode.Normal

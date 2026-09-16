@@ -1,79 +1,72 @@
 # Руководство по миграции на SDK 3.3.0
 
-> Что сломалось при переходе на Affinity SDK v3.3.0 и как это чинить.
-> Полный справочник нового API: [02-sdk-v3.3.0.md](02-sdk-v3.3.0.md) (на английском).
+> Что изменилось в Affinity SDK v3.3.0 и как чинить скрипты.
+> Основано на официальной JSLib из SDK 3.3.0 (`docs/JSLib/`, проверены все экспорты).
+> Полный справочник API: [02-sdk-v3.3.0.md](02-sdk-v3.3.0.md) (на английском).
 
 ---
 
-## 1. Главное изменение: пути модулей
+## 1. Главное: два слоя SDK
 
-SDK 3.3.0 перевёл все модули в namespace `affinity:`. Старые короткие пути
-(`/document`, `/commands`, ...) **deprecated** — скрипты на них перестали работать.
+SDK 3.3.0 состоит из **двух слоёв**, и их нельзя путать:
 
-### Полная таблица замен
+| Слой | Пути | Что экспортирует | Кто использует |
+|------|------|------------------|----------------|
+| **JSLib** (обёртка) | `/document.js`, `/commands.js`, `/nodes.js`, ... | Удобные классы: `Document`, `Shape`, `Selection`, `Dialog`, `StoryBuilder`, `FillDescriptor`, `Colour`, команды `DocumentCommand`, билдеры | **скрипты пользователей** |
+| **Raw API** | `affinity:dom`, `affinity:commands`, ... | Низкоуровневые `*Api` (`DocumentApi`, `NodeApi`...) + enum'ы (`BlendMode`, `UnitType`, `NodeChildType`, `FillType`, `ShapeType`...) | JSLib внутри; скриптам нужны только enum'ы |
 
-| Старый путь | Новый путь | Что переехало |
-|-------------|-----------|---------------|
-| `/application` | `affinity:application` | `app`, настройки, окружение |
-| `/document` | `affinity:dom` | `Document`, пресеты, история |
-| `/commands` | `affinity:commands` | `DocumentCommand`, все `create*Command`, билдеры |
-| `/nodes` | `affinity:dom` | `*NodeDefinition`, `NodeChildType`, `NodeMoveType` — см. п. 3 |
-| `/selections` | `affinity:dom` | `Selection`, `TextSelection` |
-| `/collection` | `affinity:dom` | `Collection` |
-| `/shapes` | `affinity:geometry` | `Shape`, `ShapeType`, `ShapeRectangle`, `ShapeCornerType`, ... |
-| `/geometry` | `affinity:geometry` | `Rectangle`, `Transform`, `CurveBuilder`, `PolyCurve`, `Point`, ... |
-| `/colours` | `affinity:colours` | `Colour`, `ColourProfileSet`, `Gradient` |
-| `/fills` | `affinity:fills` | `FillDescriptor`, `SolidFill`, `FillType`, `GradientFill`, ... |
-| `/linestyle` | `affinity:linestyles` | `LineStyleDescriptor`, `ArrowHead`, `ArrowHeadStyle` (внимание на **s**!) |
-| `/story` | `affinity:story` | `Story`, `StoryBuilder`, `StoryDelta` |
-| `/storybuilder` | `affinity:story` | `StoryBuilder` — **такого модуля больше нет** |
-| `/glyphatts` | `affinity:story` | `GlyphAtts` — **такого модуля больше нет** |
-| `/paragraphatts` | `affinity:story` | `ParagraphAtts` — **такого модуля больше нет** |
-| `/storydelta` | `affinity:story` | `StoryDelta` |
-| `/dialog` | `affinity:ui` | `Dialog`, `DialogResult`, все контролы |
-| `/units` | `affinity:common` | `UnitType` (рядом с `BlendMode`) |
-| `/network` | `affinity:network` | `HttpRequest`, `RequestMethod` |
-| `/fs` | `affinity:fs` | `File`, `Directory` |
-| `/buffer` | `affinity:buffer` | `Buffer` |
-| `/timer` | `affinity:timers` | `Timer` (внимание на **s**!) |
-| `/layereffects` | `affinity:layereffects` | эффекты слоёв (внимание на **s**!) |
-| `/rasterobject` | `affinity:raster` | растровые объекты |
-| — | `affinity:brushes` | **новый** модуль кистей |
-| — | `affinity:fonts` | **новый** модуль шрифтов |
-| — | `affinity:hatches` | **новый** модуль штриховок |
-| — | `affinity:os` | **новый** модуль ОС |
-| `affinity:common` | `affinity:common` | без изменений (`BlendMode`) |
-| `affinity:dom` | `affinity:dom` | без изменений |
-| `affinity:story` | `affinity:story` | без изменений |
+**Правило:** классы и команды — из JSLib (`/...js`), enum'ы — из `affinity:*`.
 
-### Типичные ловушки
+## 2. Форма путей JSLib: с `.js`
 
-1. **`/storybuilder`, `/glyphatts`, `/paragraphatts` не существуют** в новом SDK.
-   Всё это — именованные экспорты модуля `affinity:story`:
-   ```js
-   // БЫЛО (сломано):
-   const { StoryBuilder } = require('/storybuilder');
-   const { GlyphAtts } = require('/glyphatts');
-   const { ParagraphAtts } = require('/paragraphatts');
-   // СТАЛО:
-   const { StoryBuilder, GlyphAtts, ParagraphAtts } = require('affinity:story');
-   ```
-2. **Множественное число**: `affinity:linestyles`, `affinity:timers`,
-   `affinity:layereffects` — с `s` на конце. `/linestyle`, `/timer`, `/layereffects` — старые имена.
-3. **`Shape*` переехали в `affinity:geometry`** — отдельного модуля shapes больше нет:
-   ```js
-   // БЫЛО: const { Shape, ShapeType } = require('/shapes');
-   // СТАЛО:
-   const { Shape, ShapeType, ShapeRectangle, ShapeCornerType } = require('affinity:geometry');
-   ```
-4. **`Selection` и `TextSelection` — в `affinity:dom`**, не в `/selections`:
-   ```js
-   const { Document, Selection, TextSelection } = require('affinity:dom');
-   ```
+В SDK 3.3.0 модули JSLib существуют в двух формах — `/document` и `/document.js`.
+Официальные примеры текущего SDK используют форму **с `.js`**, её же используют
+внутренние связи самой JSLib. Мигрируем все скрипты на форму с `.js`:
 
----
+| Было (≤ 3.2.x) | Стало (≥ 3.3.0) | Проверено в JSLib |
+|----------------|-----------------|-------------------|
+| `/document` | `/document.js` | `Document`, `DocumentPreset`, `NewDocumentOptions` |
+| `/commands` | `/commands.js` | `DocumentCommand`, `CompoundCommandBuilder`, `AddChildNodesCommandBuilder`, `NodeChildType`, `NodeMoveType`, `GroupTransformData` |
+| `/nodes` | `/nodes.js` | `ShapeNodeDefinition`, `FrameTextNodeDefinition`, `PolyCurveNodeDefinition`, `ContainerNodeDefinition`, `TableTextNodeDefinition`, `NodeChildType` |
+| `/selections` | `/selections.js` | `Selection`, `TextSelection` |
+| `/shapes` | `/shapes.js` | `Shape`, `ShapeType`, `ShapeRectangle`, `ShapeCornerType`, `ShapeEllipse` |
+| `/geometry` | `/geometry.js` | `Rectangle`, `Transform`, `CurveBuilder`, `Curve`, `PolyCurve`, `unionRects`, `rectsIntersect` |
+| `/colours` | `/colours.js` | `Colour`, `ColourProfileSet`, `SVG11` |
+| `/fills` | `/fills.js` | `FillDescriptor`, `SolidFill`, `FillType`, `GradientFill`, `GradientFillType`, `ColourMesh`, `MeshFill` |
+| `/linestyle` | `/linestyle.js` | `ArrowHead`, `ArrowHeadStyle`, `LineStyleDescriptor`, `LineStyle`, `LineStyleMask` |
+| `/story` | `/story.js` | `HardBreakType`, ... (см. story.js) |
+| `/storybuilder` | `/storybuilder.js` | `StoryBuilder` |
+| `/storydelta` | `/storydelta.js` | `StoryDelta` |
+| `/glyphatts` | `/glyphatts.js` | `GlyphAtts`, `GlyphAttDoubleType` |
+| `/paragraphatts` | `/paragraphatts.js` | `ParagraphAtts`, `ParagraphAlignXType` |
+| `/dialog` | `/dialog.js` | `Dialog`, `DialogResult`, `HorizontalAlignment` |
+| `/units` | `/units.js` | `UnitType`, `UnitValue`, `UnitValueConverter` |
+| `/network` | `/network.js` | `HttpRequest`, `RequestMethod` |
+| `/fs` | `/fs.js` | `File`, `Directory`, ... |
+| `/buffer` | `/buffer.js` | `Buffer` |
+| `/collection` | `/collection.js` | `Collection` |
+| `/fonts` | `/fonts.js` | `FontWeight`, ... |
+| `/rasterobject` | `/rasterobject.js` | `Bitmap`, `PixelBuffer`, `RasterFormat` |
+| `/timer` | `/timers.js` | ⚠️ имя файла **во мн.ч.** — проверить через MCP (`timers.js` есть в JSLib) |
+| `affinity:common` | `affinity:common` | без изменений: `BlendMode`, `ErrorCode` |
 
-## 2. Пример миграции (шапка скрипта)
+> ⚠️ Официальные примеры используют `UnitType` и из `/units.js`, и из `affinity:common`
+> (оба работают). `BlendMode` — только из `affinity:common`.
+
+## 3. Что НЕ делать
+
+- ❌ Не импортировать классы из `affinity:*`: там их нет.
+  `require('affinity:dom')` **не** содержит `Document`, `Selection`, `*NodeDefinition`;
+  `require('affinity:commands')` **не** содержит `DocumentCommand` и билдеры;
+  `require('affinity:ui')` **не** содержит `Dialog`;
+  `require('affinity:story')` **не** содержит `StoryBuilder`/`GlyphAtts`;
+  `require('affinity:geometry')` **не** содержит `Shape`/`CurveBuilder`;
+  `require('affinity:colours')` **не** содержит `Colour`.
+  (Проверено по `docs/JSLib/*.js`: raw-модули отдают только `*Api` + enum'ы.)
+- ❌ Не использовать `Dialog.show()` — deprecated, вместо него `runModal()`
+  (`show()` пока работает как алиас, но будет удалён).
+
+## 4. Пример миграции (шапка скрипта)
 
 ```js
 // БЫЛО (SDK ≤ 3.2.x):
@@ -90,52 +83,39 @@ const { Dialog, DialogResult } = require('/dialog');
 const { BlendMode } = require('affinity:common');
 
 // СТАЛО (SDK ≥ 3.3.0):
-const { Document, ShapeNodeDefinition, Selection, TextSelection } = require('affinity:dom');
-const { AddChildNodesCommandBuilder, NodeChildType } = require('affinity:commands');
-const { Shape, ShapeType, Rectangle } = require('affinity:geometry');
-const { Colour } = require('affinity:colours');
-const { FillDescriptor, SolidFill } = require('affinity:fills');
-const { StoryBuilder, GlyphAtts } = require('affinity:story');
-const { Dialog, DialogResult } = require('affinity:ui');
+const { Document } = require('/document.js');
+const { AddChildNodesCommandBuilder, NodeChildType } = require('/commands.js');
+const { ShapeNodeDefinition } = require('/nodes.js');
+const { Shape, ShapeType } = require('/shapes.js');
+const { Rectangle } = require('/geometry.js');
+const { Colour } = require('/colours.js');
+const { FillDescriptor, SolidFill } = require('/fills.js');
+const { StoryBuilder } = require('/storybuilder.js');
+const { GlyphAtts } = require('/glyphatts.js');
+const { Dialog, DialogResult } = require('/dialog.js');
 const { BlendMode } = require('affinity:common');
 ```
 
----
+## 5. Нюанс: `NodeChildType` / `NodeMoveType`
 
-## 3. Нюанс: `NodeChildType` / `NodeMoveType`
+- `NodeChildType` — есть и в `/nodes.js`, и в `/commands.js` (оба проверены).
+- `NodeMoveType` — **только** в `/commands.js` (в `/nodes.js` его нет — проверено).
 
-В SDK 3.3.0 эти enum'ы принадлежат `affinity:dom`
-(см. Modules Overview: `NodeChildType`, `NodeMoveType` → dom).
-Старые скрипты брали их из `/commands`. Безопасный вариант импорта:
-
-```js
-const { AddChildNodesCommandBuilder } = require('affinity:commands');
-const { NodeChildType, NodeMoveType } = require('affinity:dom');
-```
-
-> Если `NodeChildType` не находится в `affinity:dom` в вашей сборке —
-> проверьте через MCP: `affinity_search_sdk_hints` / чтение топика документации.
-> JSLib-обёртка может реэкспортировать его и из commands.
-
----
-
-## 4. Что нового в 3.3.0 (стоит знать)
+## 6. Что нового в 3.3.0 (стоит знать)
 
 - **QR-коды**: `ShapeQRCode` + `QRPayload*` (Text, URL, Email, Phone, SMS, Wifi, Location, VCard, ...).
-- **Таблицы**: `TableTextNode` / `TableTextNodeDefinition`.
+- **Таблицы**: `TableTextNode` / `TableTextNodeDefinition` (есть в `/nodes.js`).
 - **Новые фигуры**: Trapezoid, Cat 1–4, Cog, Crescent, Tear, Callout, Segment, DoubleStar, SquareStar.
 - **Diffusion-заливки**: `DiffusionFill`, `DiffusionCurveSet`.
 - **AI-команды**: generate image, generative edit, remove background, select subject, detect depth, colourise, image trace.
 - **Async-варианты** почти всех методов `Document`: `loadAsync`, `saveAsync`, `saveAsAsync`, `exportAsync`, `executeCommandAsync`, ...
-- **Новые модули**: `affinity:brushes`, `affinity:fonts`, `affinity:hatches`, `affinity:os`, `affinity:raster`, `affinity:ui`.
+- **Новые raw-модули**: `affinity:brushes`, `affinity:fonts`, `affinity:hatches`, `affinity:os`, `affinity:raster`, `affinity:ui`.
 
----
+## 7. Чек-лист миграции скрипта
 
-## 5. Чек-лист миграции скрипта
-
-1. [ ] Заменить все `require('/...')` на `require('affinity:...')` по таблице выше
-2. [ ] Убрать несуществующие `/storybuilder`, `/glyphatts`, `/paragraphatts` → всё из `affinity:story`
-3. [ ] Проверить множественное число: `linestyles`, `timers`, `layereffects`
+1. [ ] Все `require('/...')` → `require('/....js')` по таблице п. 2
+2. [ ] `Dialog.show()` → `Dialog.runModal()`
+3. [ ] `NodeMoveType` брать из `/commands.js`, не из `/nodes.js`
 4. [ ] Прогнать через `affinity-check` — не должно быть unknown modules
 5. [ ] Выполнить через MCP на тестовом документе, проверить `console.log`
 6. [ ] Проверить Undo (`Ctrl+Z`) возвращает документ в исходное состояние

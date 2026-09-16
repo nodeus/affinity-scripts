@@ -3,8 +3,8 @@ import { tool } from "@mimo-ai/plugin"
 const templates: Record<string, (opts: Record<string, string>) => string> = {
   basic: () => `"use strict";
 
-const { Document } = require('/document');
-const { app } = require('/application');
+const { Document } = require('/document.js');
+const { app } = require('/application.js');
 
 const doc = app.documents.current;
 if (!doc) {
@@ -22,13 +22,12 @@ console.log('Done');
 
   dialog: () => `"use strict";
 
-const { Document } = require('/document');
-const { DocumentCommand, CompoundCommandBuilder } = require('/commands');
-const { Selection } = require('/selections');
-const { Dialog, DialogResult } = require('/dialog');
-const { UnitType } = require('/units');
-const { RGBA8 } = require('/colours');
-const { app } = require('/application');
+const { Document } = require('/document.js');
+const { DocumentCommand, CompoundCommandBuilder } = require('/commands.js');
+const { Selection } = require('/selections.js');
+const { Dialog, DialogResult } = require('/dialog.js');
+const { UnitType } = require('/units.js');
+const { app } = require('/application.js');
 
 const doc = app.documents.current;
 if (!doc) { console.log('No document open'); return; }
@@ -73,7 +72,7 @@ const sizeEditor = grp.addUnitValueEditor('Size:', 100, UnitType.Pixel);
 sizeEditor.onValueChangedHandler = applyPreview;
 dlg.onControlValueChangedHandler = applyPreview;
 
-const result = dlg.show();
+const result = dlg.runModal();
 if (result === DialogResult.Ok) {
   onOK();
   console.log('Applied');
@@ -102,12 +101,11 @@ if (result === DialogResult.Ok) {
     const factory = factoryMap[shapeType] || 'createRectangle';
     return `"use strict";
 
-const { Document } = require('/document');
-const { DocumentCommand, AddChildNodesCommandBuilder } = require('/commands');
-const { Shape } = require('/shapes');
-const { Selection } = require('/selections');
-const { RGBA8 } = require('/colours');
-const { app } = require('/application');
+const { Document } = require('/document.js');
+const { DocumentCommand, AddChildNodesCommandBuilder } = require('/commands.js');
+const { Shape } = require('/shapes.js');
+const { Selection } = require('/selections.js');
+const { app } = require('/application.js');
 
 const doc = app.documents.current;
 if (!doc) { console.log('No document open'); return; }
@@ -134,8 +132,8 @@ console.log('Created ${shapeType}: ' + shape.width + 'x' + shape.height);
 
   export: () => `"use strict";
 
-const { Document, FileExportOptions } = require('/document');
-const { app } = require('/application');
+const { Document, FileExportOptions } = require('/document.js');
+const { app } = require('/application.js');
 
 const doc = app.documents.current;
 if (!doc) { console.log('No document open'); return; }
@@ -155,14 +153,13 @@ console.log('Exported to: ' + outPath);
 
   text: () => `"use strict";
 
-const { Document } = require('/document');
-const { DocumentCommand } = require('/commands');
-const { Selection, TextSelection } = require('/selections');
-const { StoryBuilder } = require('/story');
-const { StoryDelta } = require('/storydelta');
-const { GlyphAtts } = require('/glyphatts');
-const { RGBA8 } = require('/colours');
-const { app } = require('/application');
+const { Document } = require('/document.js');
+const { DocumentCommand } = require('/commands.js');
+const { Selection, TextSelection } = require('/selections.js');
+const { StoryBuilder } = require('/storybuilder.js');
+const { StoryDelta } = require('/storydelta.js');
+const { GlyphAtts } = require('/glyphatts.js');
+const { app } = require('/application.js');
 
 const doc = app.documents.current;
 if (!doc) { console.log('No document open'); return; }
@@ -204,10 +201,10 @@ console.log('Formatted text');
 
   ai: () => `"use strict";
 
-const { Document } = require('/document');
-const { DocumentCommand } = require('/commands');
-const { Selection } = require('/selections');
-const { app } = require('/application');
+const { Document } = require('/document.js');
+const { DocumentCommand } = require('/commands.js');
+const { Selection } = require('/selections.js');
+const { app } = require('/application.js');
 
 const doc = app.documents.current;
 if (!doc) { console.log('No document open'); return; }
@@ -243,10 +240,10 @@ console.log('AI commands available - uncomment in script');
 
   batch: () => `"use strict";
 
-const { Document } = require('/document');
-const { DocumentCommand, CompoundCommandBuilder } = require('/commands');
-const { Selection } = require('/selections');
-const { app } = require('/application');
+const { Document } = require('/document.js');
+const { DocumentCommand, CompoundCommandBuilder } = require('/commands.js');
+const { Selection } = require('/selections.js');
+const { app } = require('/application.js');
 
 const doc = app.documents.current;
 if (!doc) { console.log('No document open'); return; }
@@ -276,11 +273,11 @@ console.log('Processed ' + processed + ' nodes across ' + doc.spreads.length + '
 
   curve: () => `"use strict";
 
-const { Document } = require('/document');
-const { DocumentCommand } = require('/commands');
-const { Selection } = require('/selections');
-const { Transform } = require('/geometry');
-const { app } = require('/application');
+const { Document } = require('/document.js');
+const { DocumentCommand } = require('/commands.js');
+const { Selection } = require('/selections.js');
+const { Transform } = require('/geometry.js');
+const { app } = require('/application.js');
 
 const doc = app.documents.current;
 if (!doc) { console.log('No document open'); return; }

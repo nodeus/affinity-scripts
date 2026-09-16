@@ -29,16 +29,21 @@ Builds line, bar (column), and donut diagrams directly in Affinity from data ent
   Lines before `---` are data series (`Name: v1, v2, ...` or bare `v1, v2, ...`).
   Lines after `---` are axis labels. If no `---` separator is present, the last
   non-numeric line is treated as labels.
-- SDK modules used:
-  - `affinity:dom` — `Document`, `ShapeNodeDefinition`, `FrameTextNodeDefinition`, `PolyCurveNodeDefinition`
-  - `affinity:commands` — `AddChildNodesCommandBuilder`, `NodeChildType`
-  - `affinity:geometry` — `Shape`, `ShapeType`, `ShapeRectangle`, `ShapeCornerType`, `Rectangle`, `CurveBuilder`, `PolyCurve`
-  - `affinity:colours` — `Colour`
-  - `affinity:fills` — `FillDescriptor`, `SolidFill`
-  - `affinity:linestyles` — `ArrowHead`, `ArrowHeadStyle`, `LineStyleDescriptor`
-  - `affinity:story` — `StoryBuilder`, `GlyphAtts`, `ParagraphAtts`
-  - `affinity:ui` — `Dialog`, `DialogResult`
-  - `affinity:common` — `BlendMode`, `UnitType`
+- SDK modules used (JSLib `/....js` + `affinity:common`):
+  - `/document.js` — `Document`
+  - `/commands.js` — `AddChildNodesCommandBuilder`, `NodeChildType`
+  - `/nodes.js` — `ShapeNodeDefinition`, `FrameTextNodeDefinition`, `PolyCurveNodeDefinition`
+  - `/shapes.js` — `Shape`, `ShapeType`, `ShapeRectangle`, `ShapeCornerType`
+  - `/geometry.js` — `Rectangle`, `CurveBuilder`, `PolyCurve`
+  - `/colours.js` — `Colour`
+  - `/fills.js` — `FillDescriptor`, `SolidFill`
+  - `/linestyle.js` — `ArrowHead`, `ArrowHeadStyle`, `LineStyleDescriptor`
+  - `/storybuilder.js` — `StoryBuilder`
+  - `/glyphatts.js` — `GlyphAtts`
+  - `/paragraphatts.js` — `ParagraphAtts`
+  - `/dialog.js` — `Dialog`, `DialogResult`
+  - `/units.js` — `UnitType`
+  - `affinity:common` — `BlendMode`
 
 ## 4. Behavior
 
@@ -122,4 +127,4 @@ scripts/chart-builder/
 |---------|------|--------|
 | 1.3.1 | — | Negative values support, error popups, grid lines UI |
 | 1.3.0 | — | Label mode, bar corner radius, grid lines, color pickers, parser improvements |
-| 2.0.0 | 2026-09-16 | SDK 3.3.0 migration: all imports moved to `affinity:*` module paths |
+| 2.0.0 | 2026-09-16 | SDK 3.3.0 migration: all imports moved to `/....js` JSLib form |

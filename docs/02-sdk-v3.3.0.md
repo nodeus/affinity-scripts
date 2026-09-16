@@ -288,20 +288,41 @@ Preview pattern: `doc.executeCommand(cmd, true)` for live preview →
 
 ---
 
-## 11. What changed in 3.3.0 (script-breaking)
+## 11. Two layers: JSLib wrappers vs raw `affinity:*` modules (important!)
 
-1. **Module paths are now `affinity:*` namespaced.** Old short paths
-   (`/document`, `/commands`, `/shapes`, ...) are deprecated.
-2. **Split modules:** `/shapes` + `/geometry` → `affinity:geometry`;
-   `/dialog` → `affinity:ui`; `/storybuilder`, `/glyphatts`, `/paragraphatts` →
-   `affinity:story`; `/linestyle` → `affinity:linestyles`; `/nodes`, `/selections`,
-   `/collection` → `affinity:dom`; `/network` → `affinity:network`;
-   `/fs` → `affinity:fs`; `/buffer` → `affinity:buffer`; `/timer` → `affinity:timers`;
-   `/units` → `affinity:common`; `/layereffects` → `affinity:layereffects`;
-   `/rasterobject` → `affinity:raster`.
-3. **New modules:** `affinity:brushes`, `affinity:fonts`, `affinity:hatches`,
+User scripts use the **JSLib wrapper layer** (`docs/JSLib/` in this repo —
+the official convenience library shipped with SDK 3.3.0), NOT the raw modules directly:
+
+| Layer | Paths | Exports | Used by |
+|-------|-------|---------|---------|
+| **JSLib wrappers** | `/document.js`, `/commands.js`, `/nodes.js`, `/shapes.js`, `/geometry.js`, `/colours.js`, `/fills.js`, `/dialog.js`, `/story.js`, `/storybuilder.js`, `/glyphatts.js`, `/paragraphatts.js`, `/selections.js`, `/units.js`, `/linestyle.js`, ... (also resolvable without `.js`) | Friendly classes: `Document`, `Shape`, `Rectangle`, `Colour`, `FillDescriptor`, `Dialog`, `StoryBuilder`, `Selection`, `DocumentCommand`, builders, `*NodeDefinition` | **user scripts** |
+| **Raw modules** | `affinity:dom`, `affinity:commands`, ... | Low-level `*Api` (`DocumentApi`, `NodeApi`...) + enums (`BlendMode`, `UnitType`, `NodeChildType`, `FillType`, `ShapeType`...) | JSLib internals; scripts need only the enums |
+
+Verified against `docs/JSLib/*.js` (`module.exports` + official `examples/*.js`):
+every friendly class above is exported by its JSLib file, and NO friendly class
+(`Document`, `Selection`, `DocumentCommand`, `Dialog`, `StoryBuilder`, `Shape`, ...)
+exists in the raw `affinity:*` modules (those export only `*Api` + enums/classes
+like `Rectangle`, `Transform`, `Point`, `Vector`, `StoryRange`, `UnitValue`).
+
+Rules derived from this:
+1. Import classes/commands/builders from JSLib `/....js` paths (with `.js` —
+   the form used by current official examples and JSLib internals).
+2. Import shared enums (`BlendMode`, `ErrorCode`) from `affinity:common`.
+3. `NodeMoveType` lives in `/commands.js` only (not in `/nodes.js`); `NodeChildType`
+   is in both.
+4. `Dialog.show()` is deprecated → use `runModal()`.
+
+Full migration table: see `docs/03-migration-guide.md`.
+
+## 12. What changed in 3.3.0 (new capabilities)
+
+1. **JSLib modules resolve with `.js`:** `/document.js`, `/commands.js`, `/nodes.js`,
+   etc. (extensionless form still resolves, but `.js` is the form used by current
+   official examples and JSLib internals — migrate to it).
+2. **New JSLib surface:** `TableTextNodeDefinition` (tables), `ShapeQRCode` + QRPayloads,
+   diffusion fills, trapezoid + cat/cog/crescent/tear shapes, AI commands, async
+   `Document` methods (`loadAsync`, `saveAsync`, `exportAsync`, `executeCommandAsync`, ...).
+3. **New raw modules:** `affinity:brushes`, `affinity:fonts`, `affinity:hatches`,
    `affinity:os`, `affinity:raster`, `affinity:ui`.
-4. **New capabilities:** QR-code shapes, table text nodes, diffusion fills,
-   trapezoid + cat/cog/crescent/tear shapes, AI commands, async document methods
-   (`loadAsync`, `saveAsync`, `exportAsync`, `executeCommandAsync`, ...).
-5. Full new-module table: see `docs/03-migration-guide.md`.
+4. **Deprecated:** `Dialog.show()` → use `runModal()` (`show()` still works as an alias).
+5. Full migration table: see `docs/03-migration-guide.md`.

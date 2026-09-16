@@ -19,10 +19,11 @@ Fixes typographic "orphans" (висячие предлоги и одиночны
 
 - An open document (Designer / Photo / Publisher with text support)
 - No selection required — all spreads and all nested text nodes are scanned
-- SDK modules used:
-  - `affinity:dom` — `Document`, `Selection`, `TextSelection`
-  - `affinity:commands` — `DocumentCommand`, `CompoundCommandBuilder`
-  - `affinity:ui` — `Dialog` (result message box)
+- SDK modules used (JSLib `/....js`):
+  - `/document.js` — `Document`
+  - `/selections.js` — `Selection`, `TextSelection`
+  - `/commands.js` — `DocumentCommand`, `CompoundCommandBuilder`
+  - `/dialog.js` — `Dialog` (result message box, via `runModal()`)
 
 ## 4. Behavior
 
@@ -93,4 +94,4 @@ scripts/hanging-chars/
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0.0 | — | Initial stable (pre-migration baseline) |
-| 1.1.0 | 2026-09-16 | SDK 3.3.0 migration: all imports moved to `affinity:*` module paths |
+| 1.1.0 | 2026-09-16 | SDK 3.3.0 migration: imports moved to `/....js` form, `Dialog.show()` → `runModal()` |
