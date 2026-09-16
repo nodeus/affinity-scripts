@@ -1,7 +1,7 @@
 /**
  * name: Chart Builder
  * description: Build bar, column, and pie diagrams based on the data in the text object directly in affinity.
- * version: 1.3.1
+ * version: 1.4.0
  * author: nodeus
  */
 

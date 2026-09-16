@@ -6,7 +6,7 @@
 |-------|-------|
 | **ID** | `chart-builder` |
 | **Name** | Chart Builder |
-| **Version** | `1.3.1` |
+| **Version** | `1.4.0` |
 | **Author** | nodeus |
 | **Status** | `stable` |
 | **SDK** | `>= 3.3.0` |
@@ -125,6 +125,7 @@ scripts/chart-builder/
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.4.0 | 2026-09-17 | SDK 3.3.0 JSLib imports: `NodeChildType` moved from `/nodes.js` to `/commands.js`, `BlendMode` unified under `/commands.js` |
 | 1.3.1 | — | Negative values support, error popups, grid lines UI |
 | 1.3.0 | — | Label mode, bar corner radius, grid lines, color pickers, parser improvements |
-| 2.0.0 | 2026-09-16 | SDK 3.3.0 migration: all imports moved to `/....js` JSLib form |
+| 1.3.0-sdk | 2026-09-16 | SDK 3.3.0 migration: all imports moved to `/....js` JSLib form |

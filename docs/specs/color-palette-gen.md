@@ -6,7 +6,7 @@
 |-------|-------|
 | **ID** | `color-palette-gen` |
 | **Name** | Color Palette Generator |
-| **Version** | `9.1.1` |
+| **Version** | `9.2.0` |
 | **Author** | nodeus |
 | **Status** | `stable` |
 | **SDK** | `>= 3.3.0` |
@@ -99,5 +99,6 @@ scripts/color-palette-gen/
 
 | Version | Date | Change |
 |---------|------|--------|
+| 9.2.0 | 2026-09-17 | SDK 3.3.0 JSLib imports: `NodeChildType` moved from `/nodes.js` to `/commands.js`, `BlendMode` unified under `/commands.js` |
 | 9.1.1 | — | Current stable (pre-migration baseline) |
-| 10.0.0 | 2026-09-16 | SDK 3.3.0 migration: all imports moved to `/....js` JSLib form |
+| 9.1.1-sdk | 2026-09-16 | SDK 3.3.0 migration: all imports moved to `/....js` JSLib form |

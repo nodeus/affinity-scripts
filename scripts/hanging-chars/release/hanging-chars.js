@@ -2,7 +2,7 @@
 
 name: Hanging chars and prepositions
 description: Replaces spaces after lone single characters or prepositions with non-breaking spaces (for slavic languages). Based on initial script by JiriKrblich
-version: 1.0.0
+version: 1.1.0
 author: nodeus
 */
 

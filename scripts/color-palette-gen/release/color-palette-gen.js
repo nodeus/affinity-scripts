@@ -1,7 +1,7 @@
 /**
  * name: Color Palette Generator
  * description: Extracts all fill, stroke, and gradient colors from selected nodes or entire spread. Displays swatches with RGB, CMYK, HSL, and HEX values, plus gradient stops. Groups outputs by fills, strokes, and gradients.
- * version: 9.1.1
+ * version: 9.2.0
  * author: nodeus
  */
 
