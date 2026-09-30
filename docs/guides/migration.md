@@ -30,7 +30,8 @@ const { Document } = require('/document.js');
 // было: dialog.show()
 // стало:
 const result = dialog.runModal();
-if (result === DialogResult.OK) { /* ... */ }
+if ((result?.value ?? result) == DialogResult.Ok.value) { /* ... */ }
+// Значения: DialogResult.Ok (1) / DialogResult.Cancel (0).
 ```
 
 ## 4. Что не поменялось
