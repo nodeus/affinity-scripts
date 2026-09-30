@@ -4,15 +4,36 @@
 
 ```js
 "use strict";
-const { Dialog } = require('/dialog.js');
+const { Dialog, DialogResult } = require('/dialog.js');
 // const result = dialog.runModal();
-// if (result === DialogResult.OK) { ... }
+// if ((result?.value ?? result) == DialogResult.Ok.value) { ... }
+// Значения: DialogResult.Ok / DialogResult.Cancel (сравнение через .value).
 ```
 
 `Dialog.show()` deprecated — только `runModal()` (`sdk/ui-dialogs.md`, 24 API).
 Контролы: `ComboBox`, `CheckBox`, `Switch`, `TextBox`, `UnitValueEditor`,
 `ColourPicker`, `FillEditor`/`StrokeEditor`, `FontPicker`, `RadioGroup`,
-`Button`/`ButtonSet`, `StaticText` (`DialogResult.OK` — подтверждение).
+`Button`/`ButtonSet`, `StaticText` (`DialogResult.Ok` — подтверждение).
+
+Проверено в Affinity (построение без показа — `runModal()` ждёт клика
+пользователя и в автоматических прогонах не вызывается):
+
+```js
+"use strict";
+const { Dialog, DialogResult } = require('/dialog.js');
+const { UnitType } = require('/units.js');
+const { RGBA8 } = require('/colours.js');
+
+const dlg = Dialog.create('Probe');
+const col = dlg.addColumn();
+const grp = col.addGroup('Params');
+const w = grp.addUnitValueEditor('W', UnitType.Pixel, doc.units, 500, 1);
+grp.addSwitch('Legend', true);
+grp.addComboBox('Type', ['Line', 'Bar', 'Donut'], 0);
+grp.addColourPicker('Color', RGBA8(255, 0, 0, 255));
+console.log('W=' + w.value);   // 500
+// DialogResult.Ok.value === 1, DialogResult.Cancel.value === 0
+```
 
 ## 9.2. Диалог chart-builder как образец
 

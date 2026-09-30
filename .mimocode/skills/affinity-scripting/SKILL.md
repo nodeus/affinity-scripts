@@ -162,7 +162,7 @@ const { LineStyle, LineStyleDescriptor } = require('/linestyle.js');
 ### Text
 
 ```js
-const { Story, StoryBuilder } = require('/story.js');
+const { StoryBuilder } = require('/storybuilder.js');
 const { StoryDelta } = require('/storydelta.js');
 const { GlyphAtts } = require('/glyphatts.js');
 const { ParagraphAtts } = require('/paragraphatts.js');
@@ -224,11 +224,11 @@ doc.executeCommand(cmd);
 ```js
 const { CompoundCommandBuilder } = require('/commands.js');
 
-const builder = CompoundCommandBuilder.createCommand();
-builder.add(DocumentCommand.createSetBrushFill(sel, fill1));
-builder.add(DocumentCommand.createSetPenFill(sel, fill2));
-builder.add(DocumentCommand.createTransform(sel, transform));
-doc.executeCommand(builder.build());
+const builder = CompoundCommandBuilder.create();
+builder.addCommand(DocumentCommand.createSetBrushFill(sel, fill1));
+builder.addCommand(DocumentCommand.createSetPenFill(sel, fill2));
+builder.addCommand(DocumentCommand.createTransform(sel, transform));
+doc.executeCommand(builder.createCommand());
 ```
 
 ### 4. Preview/Cancel Pattern (Interactive Dialogs)
@@ -272,23 +272,24 @@ for (const curve of poly.curves) {
 doc.executeCommand(DocumentCommand.createSetCurves(node.curvesInterface, poly));
 ```
 
-### 6. Shape Creation
+### 6. Shape Creation (verified live)
 
 ```js
-const { Shape } = require('/shapes.js');
+const { ShapeNodeDefinition } = require('/nodes.js');
+const { ShapeRectangle, ShapeEllipse, ShapeStar } = require('/shapes.js');
+const { Rectangle } = require('/geometry.js');
+const { AddChildNodesCommandBuilder } = require('/commands.js');
 
-const rect = Shape.createRectangle(spread);
-rect.width = 200;
-rect.height = 100;
-
-const star = Shape.createStar(spread);
-star.width = 150;
-star.height = 150;
-
-const ellipse = Shape.createEllipse(spread);
-ellipse.width = 100;
-ellipse.height = 80;
+const def = ShapeNodeDefinition.createDefault();
+def.shape = ShapeRectangle.create();   // ShapeEllipse, ShapeStar, ...
+def.setBoundingRectangle(new Rectangle(100, 100, 200, 150));
+const builder = AddChildNodesCommandBuilder.create();
+builder.addNode(def);
+const cmd = builder.createCommand(false);
+doc.executeCommand(cmd);
+const node = [...cmd.newNodes][0];     // newNodes lives on the COMMAND
 ```
+// NOTE: `Shape.createRectangle(spread)` does NOT exist — always use definitions + builder.
 
 ### 7. Color Creation
 
@@ -352,54 +353,35 @@ const { GlyphAtts } = require('/glyphatts.js');
 const story = StoryBuilder.create();
 story.addText('Hello World');
 
-// Apply formatting to range
-const range = { begin: 0, end: 5 };
-const atts = GlyphAtts.createDefault();
-atts.bold = true;
-atts.colour = RGBA8(255, 0, 0, 255);
-
-doc.executeCommand(DocumentCommand.createFormatText(
-  Selection.create(doc, [node]),
-  StoryDelta.createGlyphDouble(range, GlyphAtts.DoubleType.Bold, true)
-));
+// Bold via weight delta (verified live) — GlyphAtts.DoubleType does NOT exist
+const { FontWeight } = require('/fonts.js');
+doc.formatText(StoryDelta.createWeight(FontWeight.Bold), Selection.create(doc, [node]));
 ```
 
 ### 10. Export
 
 ```js
-const { FileExportOptions } = require('/document.js');
+const { Document, FileExportOptions, FileExportArea } = require('/document.js');
 
-const presets = FileExportOptions.enumeratePresetNames(doc);
-console.log('Available presets:', presets);
+console.log('Available presets:', FileExportOptions.allPresetNames);
 
 const options = FileExportOptions.createWithPresetName('JPEG (Best Quality)');
-const area = FileExportArea.createForDocument();
-doc.export('/Users/username/Desktop/output.jpg', options, area);
+const area = FileExportArea.createForWholeDocument();  // or createForCurrentSpread()
+doc.export(app.userDesktopPath + '/out.jpg', options, area);
 ```
 
 ### 11. AI Commands
 
 ```js
-// Generate image
-await doc.generateImage('A sunset over mountains', {
-  width: 1024,
-  height: 768
-});
-
-// Remove background
-doc.removeBackground(node);
-
-// Select subject
-doc.selectSubject(node);
-
-// Depth detection
-doc.detectDepth(node);
-
-// Colorize
-doc.colourise(node);
-
-// Generative edit
-doc.generativeEditImage(node, 'Add a rainbow');
+// All synchronous; operate on the current selection/document.
+// AI must be allowed in Affinity settings, else NOT_ALLOWED.
+doc.generateImage('A sunset over mountains');
+doc.removeBackground();
+doc.selectSubject();
+doc.detectDepth();
+doc.colourise();
+doc.generativeEditImage('Add a rainbow');
+doc.imageTrace(edgeThreshold, curveFittingTolerance, selection, preview);
 ```
 
 ### 12. Node Tree Traversal
@@ -407,7 +389,7 @@ doc.generativeEditImage(node, 'Add a rainbow');
 ```js
 function traverse(node, depth = 0) {
   const indent = '  '.repeat(depth);
-  console.log(`${indent}${node[Symbol.toStringTag]}: ${node.name || 'unnamed'}`);
+  console.log(`${indent}${node[Symbol.toStringTag]}: ${node.userDescription || 'unnamed'}`);
 
   if (node.children) {
     for (const child of node.children) {
@@ -430,7 +412,7 @@ for (const spread of doc.spreads) {
   doc.executeCommand(DocumentCommand.createSetCurrentSpread(spread));
 
   // Get all nodes on this spread
-  const nodes = spread.childNodes;
+  const nodes = [...spread.children];
   for (const node of nodes) {
     // Process each node
   }
@@ -487,21 +469,10 @@ console.log('File content:', content);
 
 ## Shape Types
 
-| Shape | Factory |
-|-------|---------|
-| Rectangle | `Shape.createRectangle(spread)` |
-| Rounded Rectangle | `Shape.createRoundedRectangle(spread)` |
-| Ellipse | `Shape.createEllipse(spread)` |
-| Triangle | `Shape.createTriangle(spread)` |
-| Diamond | `Shape.createDiamond(spread)` |
-| Star | `Shape.createStar(spread)` |
-| Polygon | `Shape.createPolygon(spread)` |
-| Cog | `Shape.createCog(spread)` |
-| Arrow | `Shape.createArrow(spread)` |
-| Heart | `Shape.createHeart(spread)` |
-| Cloud | `Shape.createCloud(spread)` |
-| Spiral | `Shape.createSpiral(spread)` |
-| QR Code | `Shape.createQRCodeURL(spread, url)` |
+Shapes are created via definitions + `AddChildNodesCommandBuilder`
+(see §6 above). `ShapeRectangle`, `ShapeEllipse`, `ShapeStar`,
+`ShapeArrow`, `ShapePie`, `ShapeQRCode`, ... — each with `create()`
+and its own `get*`/`set*` (`sdk/geometry.md`).
 
 ## Document Properties
 

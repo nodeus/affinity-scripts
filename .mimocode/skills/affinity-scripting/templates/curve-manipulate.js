@@ -20,6 +20,10 @@ if (!node.curvesInterface) {
   return;
 }
 
+// NOTE (verified live): createSetCurves works on PolyCurveNode, but throws
+// DISPOSED on ShapeNode — shapes expose curves read-only. Convert shapes
+// to curves first (createConvertToCurvesCommand) or work on curve nodes.
+
 // Clone and transform to spread coordinates
 const poly = node.curvesInterface.polyCurve.clone();
 poly.transform(node.baseToSpreadTransform);

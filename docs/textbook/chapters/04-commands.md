@@ -22,11 +22,32 @@ doc.executeCommand(какаяТоКоманда);
 
 ```js
 "use strict";
-const { DocumentCommand, CompoundCommandBuilder } = require('/commands.js');
+const { DocumentCommand, AddChildNodesCommandBuilder, CompoundCommandBuilder } = require('/commands.js');
+const { ShapeNodeDefinition } = require('/nodes.js');
+const { ShapeRectangle, ShapeEllipse } = require('/shapes.js');
+const { Rectangle } = require('/geometry.js');
+
+function addCmd(x, y, w, h, shapeObj) {
+  const def = ShapeNodeDefinition.createDefault();
+  def.shape = shapeObj;
+  def.setBoundingRectangle(new Rectangle(x, y, w, h));
+  const b = AddChildNodesCommandBuilder.create();
+  b.addNode(def);
+  return b.createCommand(false);   // команда, но БЕЗ выполнения
+}
 const compound = CompoundCommandBuilder.create();
-compound.addCommand(DocumentCommand.createSetText(sel, ' '));
-doc.executeCommand(compound.build());
+compound.addCommand(addCmd(10, 10, 80, 60, ShapeRectangle.create()));
+compound.addCommand(addCmd(120, 10, 80, 60, ShapeEllipse.create()));
+doc.executeCommand(compound.createCommand());  // один вызов — один undo-шаг
 ```
+Проверено в Affinity: создано 2 узла, история выросла на **1** шаг
+(`children: 2 history + 1`), откат удалил оба.
+
+Важно: имена методов JSLib и raw-SDK различаются! Сырой
+`DocumentCommandApi.createDeleteNodesCommand` в JSLib называется
+`DocumentCommand.createDeleteSelection(selection, ignoreRasterSelection)`.
+Точные имена всегда сверяйте с `docs/JSLib/commands.js`, а не только
+с онлайн-справочником (`sdk/commands-catalog.md` даёт raw-имена).
 
 ## 4.3. Preview без порчи документа
 

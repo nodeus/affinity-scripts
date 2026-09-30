@@ -61,12 +61,19 @@ affinity_search_sdk_hints(prompt="ваша задача")
 ```js
 "use strict";
 const { Document } = require('/document.js');
+const { UnitType } = require('affinity:common');
 const doc = Document.current;          // активный документ (DocumentApi.getCurrent)
 if (!doc) { console.log('No document open'); return; }
 console.log('Title: ' + doc.title);    // свойство JSLib над getTitle()
 console.log('Spreads: ' + doc.spreads.length);
-console.log('Units: ' + doc.units + ' DPI: ' + doc.dpi);
+console.log('DPI: ' + doc.dpi + ' Path: ' + doc.path + ' Dirty: ' + doc.isDirty);
+// Внимание: свойства-енаумы возвращают ОБЪЕКТЫ, а не числа:
+console.log('typeof units: ' + typeof doc.units);  // 'object' (UnitType)
+let uname = '?';
+for (const [k, v] of UnitType.entries) { if (v == doc.units) uname = k; }
+console.log('Units: ' + uname);        // Millimetre
 ```
+Проверено в Affinity: `Title: <Untitled>, Spreads: 1, DPI: 300`.
 
 `Document.current` нет — скрипт вежливо завершается через `console.log`,
 а не падает с исключением. Так начинается **каждый** скрипт.
@@ -87,9 +94,11 @@ const spread = doc.currentSpread;      // свойство над getCurrentSpre
 doc.executeCommand(DocumentCommand.createSetCurrentSpread(spread));
 ```
 
-Вызов `createSetCurrentSpread` **обязателен перед любыми правками**:
+Вызов `createSetCurrentSpread` нужен один раз в начале, перед правками:
 без него цель вставки игнорируется и новые узлы ложатся плоско на документ
 (реальный баг chart-builder 1.5.0, исправлен в 1.5.1).
+Нюанс из преамбулы SDK: повторная установка спреда **сбрасывает выделение** —
+не вызывайте её, если спред уже текущий и вам нужно выделение пользователя.
 
 ## 2.3. Все спреды документа
 
@@ -105,7 +114,7 @@ for (const spread of doc.spreads) {
 
 1. Выведите название, путь (`doc.path`) и флаг изменений (`doc.isDirty`) открытого документа.
 2. Посчитайте суммарное число дочерних узлов по всем спредам.
-3. Откройте второй документ и перечислите оба через `enumerateOpen()`.
+3. Перечислите все открытые документы через `Document.all`.
 
 # Глава 3. Узлы и дерево документа
 
@@ -139,6 +148,8 @@ for (const spread of doc.spreads) {
   }
 }
 ```
+
+Проверено в Affinity на пустом документе: `Nodes: 0 Texts: 0`, ошибок нет.
 
 ## 3.3. Родители и корень
 
@@ -177,11 +188,32 @@ doc.executeCommand(какаяТоКоманда);
 
 ```js
 "use strict";
-const { DocumentCommand, CompoundCommandBuilder } = require('/commands.js');
+const { DocumentCommand, AddChildNodesCommandBuilder, CompoundCommandBuilder } = require('/commands.js');
+const { ShapeNodeDefinition } = require('/nodes.js');
+const { ShapeRectangle, ShapeEllipse } = require('/shapes.js');
+const { Rectangle } = require('/geometry.js');
+
+function addCmd(x, y, w, h, shapeObj) {
+  const def = ShapeNodeDefinition.createDefault();
+  def.shape = shapeObj;
+  def.setBoundingRectangle(new Rectangle(x, y, w, h));
+  const b = AddChildNodesCommandBuilder.create();
+  b.addNode(def);
+  return b.createCommand(false);   // команда, но БЕЗ выполнения
+}
 const compound = CompoundCommandBuilder.create();
-compound.addCommand(DocumentCommand.createSetText(sel, ' '));
-doc.executeCommand(compound.build());
+compound.addCommand(addCmd(10, 10, 80, 60, ShapeRectangle.create()));
+compound.addCommand(addCmd(120, 10, 80, 60, ShapeEllipse.create()));
+doc.executeCommand(compound.createCommand());  // один вызов — один undo-шаг
 ```
+Проверено в Affinity: создано 2 узла, история выросла на **1** шаг
+(`children: 2 history + 1`), откат удалил оба.
+
+Важно: имена методов JSLib и raw-SDK различаются! Сырой
+`DocumentCommandApi.createDeleteNodesCommand` в JSLib называется
+`DocumentCommand.createDeleteSelection(selection, ignoreRasterSelection)`.
+Точные имена всегда сверяйте с `docs/JSLib/commands.js`, а не только
+с онлайн-справочником (`sdk/commands-catalog.md` даёт raw-имена).
 
 ## 4.3. Preview без порчи документа
 
@@ -216,9 +248,33 @@ doc.executeCommand(cmd, true);   // true = предпросмотр
 `Shape.create(type)`, у каждого типа — свои `create()`/`get*`/`set*`
 (например, `ShapeArrowApi`: `setThickness`, `setLeftLength`, …).
 
-В скриптах фигуры обычно создаются определениями узлов
+В скриптах фигуры создаются определениями узлов
 (`ShapeNodeDefinition` из `/nodes.js`) и кладутся на спред батчем
-(глава 4). Параметры углов, заливки и обводки задаются там же.
+(глава 4). Проверенный пример:
+
+```js
+"use strict";
+const { ShapeNodeDefinition } = require('/nodes.js');
+const { ShapeRectangle } = require('/shapes.js');
+const { Rectangle } = require('/geometry.js');
+const { AddChildNodesCommandBuilder } = require('/commands.js');
+
+const def = ShapeNodeDefinition.createDefault();
+def.shape = ShapeRectangle.create();          // ShapeEllipse, ShapeStar, ...
+def.setBoundingRectangle(new Rectangle(100, 100, 200, 150));
+const builder = AddChildNodesCommandBuilder.create();
+builder.addNode(def);
+const cmd = builder.createCommand(false);
+doc.executeCommand(cmd);
+const node = [...cmd.newNodes][0];            // newNodes — у КОМАНДЫ, не у билдера!
+const box = node.getSpreadBaseBox();
+console.log('Box: ' + box.x + ',' + box.y + ' ' + box.width + 'x' + box.height);
+```
+Проверено в Affinity: `New nodes: 1`, `Box: 100,100 200x150`.
+
+Внимание: `Shape.createRectangle(spread)` **не существует** — только
+`Shape.create(type)` и определения узлов (старые примеры с прямым
+созданием устарели).
 
 ## 5.2. Кривые
 
@@ -232,6 +288,11 @@ doc.executeCommand(cmd, true);   // true = предпросмотр
 ```
 
 Серийные линии графиков — простые, без наконечников.
+
+Проверено в Affinity: `DocumentCommand.createSetCurves(ci, poly)` работает
+на **PolyCurveNode**, но бросает `DISPOSED` на **ShapeNode** (фигуры отдают
+кривые только для чтения). Путь фигуры → кривая: создать `PolyCurveNode`
+(`PolyCurveNodeDefinition.createDefault()` + `setCurves(poly)`) и править его.
 
 ## 5.3. Трансформации
 
@@ -259,6 +320,34 @@ const { Colour, ColourProfileSet } = require('/colours.js');
 и перо (`hasPenFill` → `penFillDescriptor`, плюс `lineWeightPts` —
 толщина обводки). Градиент с новым трансформом — клоном:
 `cloneWithNewTransform` (так color-palette-gen рисует свотчи 120×40).
+
+```js
+"use strict";
+const { FillDescriptor, SolidFill, FillType } = require('/fills.js');
+const { RGBA8, Colour } = require('/colours.js');
+const { BlendMode } = require('/commands.js');  // реэкспорт енама
+const { Selection } = require('/selections.js');
+
+// Назначить сплошную заливку:
+const fill = FillDescriptor.createSolid(
+  SolidFill.create(RGBA8(66, 133, 244, 255)), BlendMode.Normal);
+doc.executeCommand(DocumentCommand.createSetBrushFill(Selection.create(doc, node), fill));
+
+// Прочитать обратно:
+const d = node.brushFillDescriptor;
+console.log('hasBrush: ' + node.hasBrushFill);                    // true
+console.log(d.fill.fillType.value === FillType.Solid.value);      // true (сравнение через .value!)
+const rgba = new Colour(d.fill.colour.handle).rgba8;              // сырой хэндл → обёртка
+console.log(rgba.r + ',' + rgba.g + ',' + rgba.b + ',' + rgba.alpha);  // 66,133,244,255
+```
+Проверено в Affinity: roundtrip цвета точный (`66,133,244,255`).
+
+Три правила, без которых заливки не заведутся:
+1. `FillDescriptor.createDefault()` **не существует** — используйте
+   `createSolid(fill, blendMode)` / `createNone()` / `create(...)`.
+2. `d.fill` — уже объект заливки (`SolidFill`): цвет — `d.fill.colour`,
+   а не `d.fill.solidFill`.
+3. Сырые цвета из градиентов — хэндлы: оборачивайте `new Colour(handle)`.
 
 ## 6.2. Сканирование цветов спреда
 
@@ -300,23 +389,66 @@ const originalText = story.getText(range.begin, range.end - range.begin);
 
 ## 7.3. Точечная запись
 
-Запись — только командой `createSetText` через `TextSelection`:
+Запись — только командой `createSetText` через `TextSelection`
+(точная форма — из протестированного `hanging-chars`):
 
 ```js
 "use strict";
 const { Selection, TextSelection } = require('/selections.js');
+const storyPos = range.begin + pos;   // pos — позиция пробела в тексте поля
+const textSel = TextSelection.create([{ begin: storyPos, end: storyPos + 1 }]);
 const sel = Selection.create(doc, node);
-sel.addSubSelectionForNode(/* TextSelection: начало range.begin + pos, длина 1 */);
+sel.addSubSelectionForNode(node, textSel);
 compound.addCommand(DocumentCommand.createSetText(sel, ' '));
 ```
 
-NBSP (`U+00A0`) вместо обычного пробела после одиночных букв и предлогов —
-разбор трёх паттернов (`findOrphanSpacePositions`) см. в hanging-chars.
+Так ставятся NBSP (`U+00A0`) после одиночных букв и предлогов;
+разбор трёх паттернов позиций (`findOrphanSpacePositions`) см. в hanging-chars.
 
 ## 7.4. Построение текста с нуля
 
-`StoryBuilder.addText(utf8Text)` (сигнатура сверена с онлайн-SDK),
-разметка — `GlyphAtts`. Так color-palette-gen печатает подписи свотчей,
+`StoryBuilder.addText(utf8Text)` (сигнатура сверена с онлайн-SDK).
+Проверенный пример целиком — создание фрейма, чтение обратно,
+жирное начертание:
+
+```js
+"use strict";
+const { FrameTextNodeDefinition } = require('/nodes.js');
+const { Rectangle } = require('/geometry.js');
+const { StoryBuilder } = require('/storybuilder.js');  // НЕ '/story.js'!
+const { StoryDelta } = require('/storydelta.js');
+const { FontWeight } = require('/fonts.js');
+const { Selection, TextSelection } = require('/selections.js');
+
+// Создать фрейм с текстом:
+const sb = StoryBuilder.create();
+sb.setToFrameTextDefaultStyle(doc.dpi, doc.rasterFormat);
+sb.addText('Hello textbook');
+const def = FrameTextNodeDefinition.createFromStoryBuilder(
+  new Rectangle(50, 50, 300, 100), sb);
+const builder = AddChildNodesCommandBuilder.create();
+builder.addNode(def);
+const cmd = builder.createCommand(false);
+doc.executeCommand(cmd);
+const node = [...cmd.newNodes][0];
+
+// Прочитать обратно:
+const si = node.storyInterface;
+const back = si.story.getText(si.storyRange.begin, si.storyRange.end - si.storyRange.begin);
+console.log(back);   // Hello textbook
+
+// Сделать весь текст жирным:
+const sel = Selection.create(doc, node);
+sel.addSubSelectionForNode(node,
+  TextSelection.create([{ begin: si.storyRange.begin, end: si.storyRange.end }]));
+doc.formatText(StoryDelta.createWeight(FontWeight.Bold), sel);
+```
+Проверено в Affinity: `Text node: true`, `Roundtrip: Hello textbook`,
+форматирование применено без ошибок.
+
+Жирность — это `StoryDelta.createWeight(FontWeight.Bold)` + `doc.formatText`
+(образец — `docs/JSLib/examples/boldItalics.js`). `GlyphAtts.DoubleType.Bold`
+не существует. Так color-palette-gen печатает подписи свотчей,
 а chart-builder — подписи осей и легенды.
 
 ## Упражнения
@@ -344,6 +476,17 @@ NBSP (`U+00A0`) вместо обычного пробела после один
 | Переместить в группу | `Selection` + `createMoveNodes` (`NodeMoveType.Inside`) |
 | Текущее выделение пользователя | `doc.selection` / `getCurrentSelection` |
 
+Чтение выделения — форма из примера SDK `makeGrid.js`;
+удаление — проверено живьём в Affinity (`Deleted, children now: 0`):
+
+```js
+const nodes = doc.selection.nodes.toArray();  // форма из makeGrid
+console.log('Selected: ' + nodes.length);
+// Удалить выделенное одной командой (JSLib-имя! raw: createDeleteNodesCommand):
+doc.executeCommand(DocumentCommand.createDeleteSelection(
+  Selection.create(doc, nodes), false));
+```
+
 ## 8.3. Проверка перед действием
 
 `selection.isEmpty()`, `itemCount`, `firstNode` — Bail out, если пользователь
@@ -362,15 +505,36 @@ NBSP (`U+00A0`) вместо обычного пробела после один
 
 ```js
 "use strict";
-const { Dialog } = require('/dialog.js');
+const { Dialog, DialogResult } = require('/dialog.js');
 // const result = dialog.runModal();
-// if (result === DialogResult.OK) { ... }
+// if ((result?.value ?? result) == DialogResult.Ok.value) { ... }
+// Значения: DialogResult.Ok / DialogResult.Cancel (сравнение через .value).
 ```
 
 `Dialog.show()` deprecated — только `runModal()` (`sdk/ui-dialogs.md`, 24 API).
 Контролы: `ComboBox`, `CheckBox`, `Switch`, `TextBox`, `UnitValueEditor`,
 `ColourPicker`, `FillEditor`/`StrokeEditor`, `FontPicker`, `RadioGroup`,
-`Button`/`ButtonSet`, `StaticText` (`DialogResult.OK` — подтверждение).
+`Button`/`ButtonSet`, `StaticText` (`DialogResult.Ok` — подтверждение).
+
+Проверено в Affinity (построение без показа — `runModal()` ждёт клика
+пользователя и в автоматических прогонах не вызывается):
+
+```js
+"use strict";
+const { Dialog, DialogResult } = require('/dialog.js');
+const { UnitType } = require('/units.js');
+const { RGBA8 } = require('/colours.js');
+
+const dlg = Dialog.create('Probe');
+const col = dlg.addColumn();
+const grp = col.addGroup('Params');
+const w = grp.addUnitValueEditor('W', UnitType.Pixel, doc.units, 500, 1);
+grp.addSwitch('Legend', true);
+grp.addComboBox('Type', ['Line', 'Bar', 'Donut'], 0);
+grp.addColourPicker('Color', RGBA8(255, 0, 0, 255));
+console.log('W=' + w.value);   // 500
+// DialogResult.Ok.value === 1, DialogResult.Cancel.value === 0
+```
 
 ## 9.2. Диалог chart-builder как образец
 
@@ -432,6 +596,9 @@ hanging-chars показывает один модальный итог: `Fixed 
 const { app } = require('/application.js');
 console.log(app.userDesktopPath);       // единственный доступный корень
 ```
+Проверено в Affinity: `Desktop: C:\Users\nodeus\Desktop`.
+Пресеты экспорта (только чтение, без записи файлов):
+`FileExportOptions.allPresetNames` → `PNG | PNG-8 (dithered) | PNG-HDR …`.
 
 Любой путь вне Desktop — ошибка. Бинарные данные — через `/buffer.js`.
 

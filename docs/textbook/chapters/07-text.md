@@ -18,23 +18,66 @@ const originalText = story.getText(range.begin, range.end - range.begin);
 
 ## 7.3. Точечная запись
 
-Запись — только командой `createSetText` через `TextSelection`:
+Запись — только командой `createSetText` через `TextSelection`
+(точная форма — из протестированного `hanging-chars`):
 
 ```js
 "use strict";
 const { Selection, TextSelection } = require('/selections.js');
+const storyPos = range.begin + pos;   // pos — позиция пробела в тексте поля
+const textSel = TextSelection.create([{ begin: storyPos, end: storyPos + 1 }]);
 const sel = Selection.create(doc, node);
-sel.addSubSelectionForNode(/* TextSelection: начало range.begin + pos, длина 1 */);
+sel.addSubSelectionForNode(node, textSel);
 compound.addCommand(DocumentCommand.createSetText(sel, ' '));
 ```
 
-NBSP (`U+00A0`) вместо обычного пробела после одиночных букв и предлогов —
-разбор трёх паттернов (`findOrphanSpacePositions`) см. в hanging-chars.
+Так ставятся NBSP (`U+00A0`) после одиночных букв и предлогов;
+разбор трёх паттернов позиций (`findOrphanSpacePositions`) см. в hanging-chars.
 
 ## 7.4. Построение текста с нуля
 
-`StoryBuilder.addText(utf8Text)` (сигнатура сверена с онлайн-SDK),
-разметка — `GlyphAtts`. Так color-palette-gen печатает подписи свотчей,
+`StoryBuilder.addText(utf8Text)` (сигнатура сверена с онлайн-SDK).
+Проверенный пример целиком — создание фрейма, чтение обратно,
+жирное начертание:
+
+```js
+"use strict";
+const { FrameTextNodeDefinition } = require('/nodes.js');
+const { Rectangle } = require('/geometry.js');
+const { StoryBuilder } = require('/storybuilder.js');  // НЕ '/story.js'!
+const { StoryDelta } = require('/storydelta.js');
+const { FontWeight } = require('/fonts.js');
+const { Selection, TextSelection } = require('/selections.js');
+
+// Создать фрейм с текстом:
+const sb = StoryBuilder.create();
+sb.setToFrameTextDefaultStyle(doc.dpi, doc.rasterFormat);
+sb.addText('Hello textbook');
+const def = FrameTextNodeDefinition.createFromStoryBuilder(
+  new Rectangle(50, 50, 300, 100), sb);
+const builder = AddChildNodesCommandBuilder.create();
+builder.addNode(def);
+const cmd = builder.createCommand(false);
+doc.executeCommand(cmd);
+const node = [...cmd.newNodes][0];
+
+// Прочитать обратно:
+const si = node.storyInterface;
+const back = si.story.getText(si.storyRange.begin, si.storyRange.end - si.storyRange.begin);
+console.log(back);   // Hello textbook
+
+// Сделать весь текст жирным:
+const sel = Selection.create(doc, node);
+sel.addSubSelectionForNode(node,
+  TextSelection.create([{ begin: si.storyRange.begin, end: si.storyRange.end }]));
+doc.formatText(StoryDelta.createWeight(FontWeight.Bold), sel);
+```
+Проверено в Affinity: `Text node: true`, `Roundtrip: Hello textbook`,
+форматирование применено без ошибок.
+
+Жирность — это `StoryDelta.createWeight(FontWeight.Bold)` + `doc.formatText`
+(образец — `docs/JSLib/examples/boldItalics.js`). `GlyphAtts.DoubleType.Bold`
+не существует. Так color-palette-gen печатает подписи свотчей,
 а chart-builder — подписи осей и легенды.
 
 ## Упражнения

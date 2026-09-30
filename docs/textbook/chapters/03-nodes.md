@@ -31,6 +31,8 @@ for (const spread of doc.spreads) {
 }
 ```
 
+Проверено в Affinity на пустом документе: `Nodes: 0 Texts: 0`, ошибок нет.
+
 ## 3.3. Родители и корень
 
 Узел знает родителя (`node.parent`), документ — корневой узел (`doc.rootNode`).

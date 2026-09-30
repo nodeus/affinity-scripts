@@ -7,6 +7,9 @@
 const { app } = require('/application.js');
 console.log(app.userDesktopPath);       // единственный доступный корень
 ```
+Проверено в Affinity: `Desktop: C:\Users\nodeus\Desktop`.
+Пресеты экспорта (только чтение, без записи файлов):
+`FileExportOptions.allPresetNames` → `PNG | PNG-8 (dithered) | PNG-HDR …`.
 
 Любой путь вне Desktop — ошибка. Бинарные данные — через `/buffer.js`.
 

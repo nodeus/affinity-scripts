@@ -5,12 +5,19 @@
 ```js
 "use strict";
 const { Document } = require('/document.js');
+const { UnitType } = require('affinity:common');
 const doc = Document.current;          // активный документ (DocumentApi.getCurrent)
 if (!doc) { console.log('No document open'); return; }
 console.log('Title: ' + doc.title);    // свойство JSLib над getTitle()
 console.log('Spreads: ' + doc.spreads.length);
-console.log('Units: ' + doc.units + ' DPI: ' + doc.dpi);
+console.log('DPI: ' + doc.dpi + ' Path: ' + doc.path + ' Dirty: ' + doc.isDirty);
+// Внимание: свойства-енаумы возвращают ОБЪЕКТЫ, а не числа:
+console.log('typeof units: ' + typeof doc.units);  // 'object' (UnitType)
+let uname = '?';
+for (const [k, v] of UnitType.entries) { if (v == doc.units) uname = k; }
+console.log('Units: ' + uname);        // Millimetre
 ```
+Проверено в Affinity: `Title: <Untitled>, Spreads: 1, DPI: 300`.
 
 `Document.current` нет — скрипт вежливо завершается через `console.log`,
 а не падает с исключением. Так начинается **каждый** скрипт.
@@ -31,9 +38,11 @@ const spread = doc.currentSpread;      // свойство над getCurrentSpre
 doc.executeCommand(DocumentCommand.createSetCurrentSpread(spread));
 ```
 
-Вызов `createSetCurrentSpread` **обязателен перед любыми правками**:
+Вызов `createSetCurrentSpread` нужен один раз в начале, перед правками:
 без него цель вставки игнорируется и новые узлы ложатся плоско на документ
 (реальный баг chart-builder 1.5.0, исправлен в 1.5.1).
+Нюанс из преамбулы SDK: повторная установка спреда **сбрасывает выделение** —
+не вызывайте её, если спред уже текущий и вам нужно выделение пользователя.
 
 ## 2.3. Все спреды документа
 
@@ -49,4 +58,4 @@ for (const spread of doc.spreads) {
 
 1. Выведите название, путь (`doc.path`) и флаг изменений (`doc.isDirty`) открытого документа.
 2. Посчитайте суммарное число дочерних узлов по всем спредам.
-3. Откройте второй документ и перечислите оба через `enumerateOpen()`.
+3. Перечислите все открытые документы через `Document.all`.

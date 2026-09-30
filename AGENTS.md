@@ -124,7 +124,7 @@ const historyStart = doc.history.position;
 const builder = CompoundCommandBuilder.createCommand();
 builder.add(cmd1);
 builder.add(cmd2);
-doc.executeCommand(builder.build());
+doc.executeCommand(builder.createCommand());
 ```
 
 Full patterns and code examples: `.mimocode/skills/affinity-scripting/SKILL.md`

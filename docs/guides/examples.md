@@ -74,11 +74,13 @@ const { DocumentCommand, CompoundCommandBuilder } = require('/commands.js');
 // NBSP — замена одиночного пробела в позиции pos текстового узла node:
 const compound = CompoundCommandBuilder.create();
 for (const pos of positions) {
+  const storyPos = range.begin + pos;
+  const textSel = TextSelection.create([{ begin: storyPos, end: storyPos + 1 }]);
   const sel = Selection.create(doc, node);
-  sel.addSubSelectionForNode(/* TextSelection на range.begin + pos, длина 1 */);
+  sel.addSubSelectionForNode(node, textSel);
   compound.addCommand(DocumentCommand.createSetText(sel, ' '));
 }
-doc.executeCommand(compound.build());
+doc.executeCommand(compound.createCommand());
 // Полный рабочий код: scripts/hanging-chars/source/hanging-chars.js
 ```
 
@@ -106,9 +108,9 @@ const groupNode = [...cmd.newNodes][0];
 
 ```js
 "use strict";
-const { Dialog } = require('/dialog.js');
+const { Dialog, DialogResult } = require('/dialog.js');
 // const result = dialog.runModal();
-// if (result === DialogResult.OK) { ... }
+// if ((result?.value ?? result) == DialogResult.Ok.value) { ... }
 // Полный пример: scripts/hanging-chars (диалог 'No-Orphan Fix')
 ```
 

@@ -14,7 +14,7 @@ let errors = 0;
 for (const spread of doc.spreads) {
   doc.executeCommand(DocumentCommand.createSetCurrentSpread(spread));
 
-  const nodes = spread.childNodes;
+  const nodes = [...spread.children];
   for (const node of nodes) {
     try {
       // === Your processing logic here ===
@@ -27,12 +27,13 @@ for (const spread of doc.spreads) {
       // const sel = Selection.create(doc, [node]);
       // doc.executeCommand(DocumentCommand.createTransform(sel, Transform.createTranslate(0, 10)));
 
-      // Example 3: Rename
-      // node.name = 'Renamed_' + processed;
+      // Example 3: Rename (via command — never assign directly!)
+      // const sel = Selection.create(doc, [node]);
+      // doc.executeCommand(DocumentCommand.createSetDescription(sel, 'Renamed_' + processed));
 
       processed++;
     } catch (e) {
-      console.log('Error on node: ' + (node.name || 'unnamed') + ' - ' + e);
+      console.log('Error on node: ' + (node.userDescription || 'unnamed') + ' - ' + e);
       errors++;
     }
   }

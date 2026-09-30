@@ -17,6 +17,17 @@
 | Переместить в группу | `Selection` + `createMoveNodes` (`NodeMoveType.Inside`) |
 | Текущее выделение пользователя | `doc.selection` / `getCurrentSelection` |
 
+Чтение выделения — форма из примера SDK `makeGrid.js`;
+удаление — проверено живьём в Affinity (`Deleted, children now: 0`):
+
+```js
+const nodes = doc.selection.nodes.toArray();  // форма из makeGrid
+console.log('Selected: ' + nodes.length);
+// Удалить выделенное одной командой (JSLib-имя! raw: createDeleteNodesCommand):
+doc.executeCommand(DocumentCommand.createDeleteSelection(
+  Selection.create(doc, nodes), false));
+```
+
 ## 8.3. Проверка перед действием
 
 `selection.isEmpty()`, `itemCount`, `firstNode` — Bail out, если пользователь

@@ -1,13 +1,13 @@
 "use strict";
 
-const { Document, FileExportOptions } = require('/document.js');
+const { Document, FileExportOptions, FileExportArea } = require('/document.js');
 const { app } = require('/application.js');
 
 const doc = app.documents.current;
 if (!doc) { console.log('No document open'); return; }
 
 // List available presets
-const presets = FileExportOptions.enumeratePresetNames(doc);
+const presets = FileExportOptions.allPresetNames;
 console.log('Available presets:');
 presets.forEach(p => console.log('  - ' + p));
 
@@ -16,8 +16,8 @@ presets.forEach(p => console.log('  - ' + p));
 // 'PNG', 'PNG-8', 'PDF', 'PSD', 'TIFF', 'SVG', 'EPS'
 
 const options = FileExportOptions.createWithPresetName('JPEG (Best Quality)');
-const area = FileExportArea.createForDocument();
-const outPath = app.userDesktopPath + '/export_' + doc.name + '.jpg';
+const area = FileExportArea.createForWholeDocument();
+const outPath = app.userDesktopPath + '/export_' + doc.title + '.jpg';
 
 doc.export(outPath, options, area);
 console.log('Exported to: ' + outPath);

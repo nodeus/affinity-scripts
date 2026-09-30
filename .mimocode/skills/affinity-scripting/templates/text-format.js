@@ -3,10 +3,8 @@
 const { Document } = require('/document.js');
 const { DocumentCommand } = require('/commands.js');
 const { Selection, TextSelection } = require('/selections.js');
-const { StoryBuilder } = require('/story.js');
 const { StoryDelta } = require('/storydelta.js');
-const { GlyphAtts } = require('/glyphatts.js');
-const { RGBA8 } = require('/colours.js');
+const { FontWeight } = require('/fonts.js');
 const { app } = require('/application.js');
 
 const doc = app.documents.current;
@@ -15,10 +13,13 @@ if (!doc) { console.log('No document open'); return; }
 const spread = doc.spreads.first;
 doc.executeCommand(DocumentCommand.createSetCurrentSpread(spread));
 
-// Find first text frame
+// Find first text node
 let textNode = null;
-for (const node of spread.childNodes) {
-  if (node.isFrameTextNode) { textNode = node; break; }
+const stack = [...spread.children];
+while (stack.length && !textNode) {
+  const node = stack.pop();
+  if (node.isTextNode) { textNode = node; break; }
+  if (node.children) for (const ch of node.children) stack.push(ch);
 }
 
 if (!textNode) {
@@ -28,20 +29,14 @@ if (!textNode) {
 
 const storyInterface = textNode.storyInterface;
 const story = storyInterface.story;
+const range = storyInterface.storyRange;
 
 // Read text
-const text = story.getText(0, story.length);
+const text = story.getText(range.begin, range.end - range.begin);
 console.log('Current text: ' + text);
 
-// Format: make first 5 characters bold
-const sel = Selection.create(doc, [textNode]);
-const textSel = TextSelection.create([{ begin: 0, end: 5 }]);
-sel.addSubSelectionForNode(textNode, textSel);
-
-const delta = StoryDelta.createGlyphDouble(
-  { begin: 0, end: 5 },
-  GlyphAtts.DoubleType.Bold,
-  true
-);
-doc.executeCommand(DocumentCommand.createFormatText(sel, delta));
+// Format: make whole story bold
+const sel = Selection.create(doc, textNode);
+sel.addSubSelectionForNode(textNode, TextSelection.create([{ begin: range.begin, end: range.end }]));
+doc.formatText(StoryDelta.createWeight(FontWeight.Bold), sel);
 console.log('Formatted text');

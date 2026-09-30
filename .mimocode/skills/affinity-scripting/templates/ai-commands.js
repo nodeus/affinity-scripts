@@ -13,7 +13,7 @@ doc.executeCommand(DocumentCommand.createSetCurrentSpread(spread));
 
 // Ensure we have a selection
 if (doc.selection.nodes.length === 0) {
-  const firstNode = spread.childNodes.first;
+  const firstNode = spread.children.first;
   if (firstNode) {
     doc.executeCommand(DocumentCommand.createSetSelection(
       Selection.create(doc, [firstNode])
@@ -24,24 +24,26 @@ if (doc.selection.nodes.length === 0) {
 const node = doc.selection.nodes.first;
 if (!node) { console.log('No node to process'); return; }
 
-// --- Uncomment the AI command you need ---
+// --- Uncomment the AI command you need (all synchronous; they work on the
+// --- current selection / document; AI must be allowed in Affinity settings,
+// --- otherwise the call returns NOT_ALLOWED) ---
 
 // Generate new image from prompt
-// await doc.generateImage('A sunset over mountains', { width: 1024, height: 768 });
+// doc.generateImage('A sunset over mountains');
 
-// Generative edit on existing image
-// await doc.generativeEditImage(node, 'Add a rainbow in the sky');
+// Generative edit with prompt (applies to selection)
+// doc.generativeEditImage('Add a rainbow in the sky');
 
-// Remove background from image
-// await doc.removeBackground(node);
+// Remove background (applies to selection)
+// doc.removeBackground();
 
 // Auto-select subject
-// await doc.selectSubject(node);
+// doc.selectSubject();
 
 // Detect depth map
-// await doc.detectDepth(node);
+// doc.detectDepth();
 
 // Colorize black and white image
-// await doc.colourise(node);
+// doc.colourise();
 
 console.log('AI commands template ready - uncomment desired command');

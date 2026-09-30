@@ -21,10 +21,10 @@ doc.executeCommand(DocumentCommand.createSetCurrentSpread(spread));
 ## 2. Создание узлов (один undo-шаг на батч)
 
 ```js
-const builder = AddChildNodesCommandBuilder.createCommand();
-builder.setInsertionTarget(/* ... */);   // куда вставлять
-builder.add(nodeDefinition);             // что вставлять
-doc.executeCommand(builder.build(NodeChildType.Main));
+const builder = AddChildNodesCommandBuilder.create();
+builder.addNode(nodeDefinition);             // что вставлять (addNode / addShapeNode / ...)
+builder.setInsertionTarget(groupNode);       // куда (узел; либо setInsertionTargetSelection)
+doc.executeCommand(builder.createCommand(true, NodeChildType.Main));
 ```
 
 Группа-контейнер: создать группу, получить узел из `cmd.newNodes`,
@@ -34,10 +34,10 @@ doc.executeCommand(builder.build(NodeChildType.Main));
 ## 3. Compound — несколько команд в один undo
 
 ```js
-const compound = CompoundCommandBuilder.createCommand();
-compound.add(cmd1);
-compound.add(cmd2);
-doc.executeCommand(compound.build());
+const compound = CompoundCommandBuilder.create();
+compound.addCommand(cmd1);
+compound.addCommand(cmd2);
+doc.executeCommand(compound.createCommand());
 ```
 
 Пример: замена пробелов на NBSP по одному `createSetText` на позицию —

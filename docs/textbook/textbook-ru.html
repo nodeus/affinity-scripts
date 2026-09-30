@@ -53,12 +53,19 @@ affinity_search_sdk_hints(prompt=&quot;ваша задача&quot;)
 <h2 id="21">2.1. Текущий документ</h2>
 <pre><code class="language-js">&quot;use strict&quot;;
 const { Document } = require('/document.js');
+const { UnitType } = require('affinity:common');
 const doc = Document.current;          // активный документ (DocumentApi.getCurrent)
 if (!doc) { console.log('No document open'); return; }
 console.log('Title: ' + doc.title);    // свойство JSLib над getTitle()
 console.log('Spreads: ' + doc.spreads.length);
-console.log('Units: ' + doc.units + ' DPI: ' + doc.dpi);
+console.log('DPI: ' + doc.dpi + ' Path: ' + doc.path + ' Dirty: ' + doc.isDirty);
+// Внимание: свойства-енаумы возвращают ОБЪЕКТЫ, а не числа:
+console.log('typeof units: ' + typeof doc.units);  // 'object' (UnitType)
+let uname = '?';
+for (const [k, v] of UnitType.entries) { if (v == doc.units) uname = k; }
+console.log('Units: ' + uname);        // Millimetre
 </code></pre>
+<p>Проверено в Affinity: <code>Title: &lt;Untitled&gt;, Spreads: 1, DPI: 300</code>.</p>
 <p><code>Document.current</code> нет — скрипт вежливо завершается через <code>console.log</code>,
 а не падает с исключением. Так начинается <strong>каждый</strong> скрипт.</p>
 <p>Другие способы получить документ: <code>Document.enumerateOpen()</code> (все открытые),
@@ -73,9 +80,11 @@ if (!doc) { console.log('No document open'); return; }
 const spread = doc.currentSpread;      // свойство над getCurrentSpread()
 doc.executeCommand(DocumentCommand.createSetCurrentSpread(spread));
 </code></pre>
-<p>Вызов <code>createSetCurrentSpread</code> <strong>обязателен перед любыми правками</strong>:
+<p>Вызов <code>createSetCurrentSpread</code> нужен один раз в начале, перед правками:
 без него цель вставки игнорируется и новые узлы ложатся плоско на документ
-(реальный баг chart-builder 1.5.0, исправлен в 1.5.1).</p>
+(реальный баг chart-builder 1.5.0, исправлен в 1.5.1).
+Нюанс из преамбулы SDK: повторная установка спреда <strong>сбрасывает выделение</strong> —
+не вызывайте её, если спред уже текущий и вам нужно выделение пользователя.</p>
 <h2 id="23">2.3. Все спреды документа</h2>
 <pre><code class="language-js">for (const spread of doc.spreads) {
   console.log('Children: ' + spread.children.length);
@@ -86,7 +95,7 @@ doc.executeCommand(DocumentCommand.createSetCurrentSpread(spread));
 <ol>
 <li>Выведите название, путь (<code>doc.path</code>) и флаг изменений (<code>doc.isDirty</code>) открытого документа.</li>
 <li>Посчитайте суммарное число дочерних узлов по всем спредам.</li>
-<li>Откройте второй документ и перечислите оба через <code>enumerateOpen()</code>.</li>
+<li>Перечислите все открытые документы через <code>Document.all</code>.</li>
 </ol>
 <h1 id="3">Глава 3. Узлы и дерево документа</h1>
 <h2 id="31">3.1. Что такое узел</h2>
@@ -114,6 +123,7 @@ for (const spread of doc.spreads) {
   }
 }
 </code></pre>
+<p>Проверено в Affinity на пустом документе: <code>Nodes: 0 Texts: 0</code>, ошибок нет.</p>
 <h2 id="33">3.3. Родители и корень</h2>
 <p>Узел знает родителя (<code>node.parent</code>), документ — корневой узел (<code>doc.rootNode</code>).
 Полный перечень типов узлов и их методов — <code>sdk/dom-nodes.md</code>,
@@ -140,11 +150,31 @@ for (const spread of doc.spreads) {
 Разнородные изменения — в <code>CompoundCommandBuilder</code> (пример: hanging-chars
 кладёт десятки <code>createSetText</code> в один undo-шаг на текстовое поле).</p>
 <pre><code class="language-js">&quot;use strict&quot;;
-const { DocumentCommand, CompoundCommandBuilder } = require('/commands.js');
+const { DocumentCommand, AddChildNodesCommandBuilder, CompoundCommandBuilder } = require('/commands.js');
+const { ShapeNodeDefinition } = require('/nodes.js');
+const { ShapeRectangle, ShapeEllipse } = require('/shapes.js');
+const { Rectangle } = require('/geometry.js');
+
+function addCmd(x, y, w, h, shapeObj) {
+  const def = ShapeNodeDefinition.createDefault();
+  def.shape = shapeObj;
+  def.setBoundingRectangle(new Rectangle(x, y, w, h));
+  const b = AddChildNodesCommandBuilder.create();
+  b.addNode(def);
+  return b.createCommand(false);   // команда, но БЕЗ выполнения
+}
 const compound = CompoundCommandBuilder.create();
-compound.addCommand(DocumentCommand.createSetText(sel, ' '));
-doc.executeCommand(compound.build());
+compound.addCommand(addCmd(10, 10, 80, 60, ShapeRectangle.create()));
+compound.addCommand(addCmd(120, 10, 80, 60, ShapeEllipse.create()));
+doc.executeCommand(compound.createCommand());  // один вызов — один undo-шаг
 </code></pre>
+<p>Проверено в Affinity: создано 2 узла, история выросла на <strong>1</strong> шаг
+(<code>children: 2 history + 1</code>), откат удалил оба.</p>
+<p>Важно: имена методов JSLib и raw-SDK различаются! Сырой
+<code>DocumentCommandApi.createDeleteNodesCommand</code> в JSLib называется
+<code>DocumentCommand.createDeleteSelection(selection, ignoreRasterSelection)</code>.
+Точные имена всегда сверяйте с <code>docs/JSLib/commands.js</code>, а не только
+с онлайн-справочником (<code>sdk/commands-catalog.md</code> даёт raw-имена).</p>
 <h2 id="43-preview">4.3. Preview без порчи документа</h2>
 <p>Интерактивные скрипты показывают результат до нажатия OK:</p>
 <pre><code class="language-js">const historyStart = doc.history.position;
@@ -169,9 +199,30 @@ doc.executeCommand(cmd, true);   // true = предпросмотр
 <code>ShapeQRCode</code> и ещё ~25 типов (<code>ShapeType</code>). Сырые фабрики:
 <code>Shape.create(type)</code>, у каждого типа — свои <code>create()</code>/<code>get*</code>/<code>set*</code>
 (например, <code>ShapeArrowApi</code>: <code>setThickness</code>, <code>setLeftLength</code>, …).</p>
-<p>В скриптах фигуры обычно создаются определениями узлов
+<p>В скриптах фигуры создаются определениями узлов
 (<code>ShapeNodeDefinition</code> из <code>/nodes.js</code>) и кладутся на спред батчем
-(глава 4). Параметры углов, заливки и обводки задаются там же.</p>
+(глава 4). Проверенный пример:</p>
+<pre><code class="language-js">&quot;use strict&quot;;
+const { ShapeNodeDefinition } = require('/nodes.js');
+const { ShapeRectangle } = require('/shapes.js');
+const { Rectangle } = require('/geometry.js');
+const { AddChildNodesCommandBuilder } = require('/commands.js');
+
+const def = ShapeNodeDefinition.createDefault();
+def.shape = ShapeRectangle.create();          // ShapeEllipse, ShapeStar, ...
+def.setBoundingRectangle(new Rectangle(100, 100, 200, 150));
+const builder = AddChildNodesCommandBuilder.create();
+builder.addNode(def);
+const cmd = builder.createCommand(false);
+doc.executeCommand(cmd);
+const node = [...cmd.newNodes][0];            // newNodes — у КОМАНДЫ, не у билдера!
+const box = node.getSpreadBaseBox();
+console.log('Box: ' + box.x + ',' + box.y + ' ' + box.width + 'x' + box.height);
+</code></pre>
+<p>Проверено в Affinity: <code>New nodes: 1</code>, <code>Box: 100,100 200x150</code>.</p>
+<p>Внимание: <code>Shape.createRectangle(spread)</code> <strong>не существует</strong> — только
+<code>Shape.create(type)</code> и определения узлов (старые примеры с прямым
+созданием устарели).</p>
 <h2 id="52">5.2. Кривые</h2>
 <p><code>CurveBuilder</code> строит <code>PolyCurve</code> — произвольные контуры, стрелки серий
 на графиках, точки данных. Важный порядок аргументов:</p>
@@ -180,6 +231,10 @@ doc.executeCommand(cmd, true);   // true = предпросмотр
 // роняет скрипт молча (реальный случай chart-builder 1.4.1).
 </code></pre>
 <p>Серийные линии графиков — простые, без наконечников.</p>
+<p>Проверено в Affinity: <code>DocumentCommand.createSetCurves(ci, poly)</code> работает
+на <strong>PolyCurveNode</strong>, но бросает <code>DISPOSED</code> на <strong>ShapeNode</strong> (фигуры отдают
+кривые только для чтения). Путь фигуры → кривая: создать <code>PolyCurveNode</code>
+(<code>PolyCurveNodeDefinition.createDefault()</code> + <code>setCurves(poly)</code>) и править его.</p>
 <h2 id="53">5.3. Трансформации</h2>
 <p><code>Rectangle</code> + <code>Transform</code>: положение, размер, поворот (<code>sdk/geometry.md</code>:
 <code>RectangleApi</code>, <code>TransformApi</code>). Палитра color-palette-gen вычисляет место
@@ -200,6 +255,31 @@ const { Colour, ColourProfileSet } = require('/colours.js');
 и перо (<code>hasPenFill</code> → <code>penFillDescriptor</code>, плюс <code>lineWeightPts</code> —
 толщина обводки). Градиент с новым трансформом — клоном:
 <code>cloneWithNewTransform</code> (так color-palette-gen рисует свотчи 120×40).</p>
+<pre><code class="language-js">&quot;use strict&quot;;
+const { FillDescriptor, SolidFill, FillType } = require('/fills.js');
+const { RGBA8, Colour } = require('/colours.js');
+const { BlendMode } = require('/commands.js');  // реэкспорт енама
+const { Selection } = require('/selections.js');
+
+// Назначить сплошную заливку:
+const fill = FillDescriptor.createSolid(
+  SolidFill.create(RGBA8(66, 133, 244, 255)), BlendMode.Normal);
+doc.executeCommand(DocumentCommand.createSetBrushFill(Selection.create(doc, node), fill));
+
+// Прочитать обратно:
+const d = node.brushFillDescriptor;
+console.log('hasBrush: ' + node.hasBrushFill);                    // true
+console.log(d.fill.fillType.value === FillType.Solid.value);      // true (сравнение через .value!)
+const rgba = new Colour(d.fill.colour.handle).rgba8;              // сырой хэндл → обёртка
+console.log(rgba.r + ',' + rgba.g + ',' + rgba.b + ',' + rgba.alpha);  // 66,133,244,255
+</code></pre>
+<p>Проверено в Affinity: roundtrip цвета точный (<code>66,133,244,255</code>).</p>
+<p>Три правила, без которых заливки не заведутся:
+1. <code>FillDescriptor.createDefault()</code> <strong>не существует</strong> — используйте
+   <code>createSolid(fill, blendMode)</code> / <code>createNone()</code> / <code>create(...)</code>.
+2. <code>d.fill</code> — уже объект заливки (<code>SolidFill</code>): цвет — <code>d.fill.colour</code>,
+   а не <code>d.fill.solidFill</code>.
+3. Сырые цвета из градиентов — хэндлы: оборачивайте <code>new Colour(handle)</code>.</p>
 <h2 id="62">6.2. Сканирование цветов спреда</h2>
 <p>Паттерн из color-palette-gen (протестирован): рекурсивный обход,
 три словаря <code>fills</code> / <code>strokes</code> / <code>gradients</code>, ключ <code>r,g,b</code> для сплошных
@@ -228,18 +308,58 @@ const { Colour, ColourProfileSet } = require('/colours.js');
 </code></pre>
 <p>Так hanging-chars читает каждое текстовое поле на каждом спреде.</p>
 <h2 id="73">7.3. Точечная запись</h2>
-<p>Запись — только командой <code>createSetText</code> через <code>TextSelection</code>:</p>
+<p>Запись — только командой <code>createSetText</code> через <code>TextSelection</code>
+(точная форма — из протестированного <code>hanging-chars</code>):</p>
 <pre><code class="language-js">&quot;use strict&quot;;
 const { Selection, TextSelection } = require('/selections.js');
+const storyPos = range.begin + pos;   // pos — позиция пробела в тексте поля
+const textSel = TextSelection.create([{ begin: storyPos, end: storyPos + 1 }]);
 const sel = Selection.create(doc, node);
-sel.addSubSelectionForNode(/* TextSelection: начало range.begin + pos, длина 1 */);
+sel.addSubSelectionForNode(node, textSel);
 compound.addCommand(DocumentCommand.createSetText(sel, ' '));
 </code></pre>
-<p>NBSP (<code>U+00A0</code>) вместо обычного пробела после одиночных букв и предлогов —
-разбор трёх паттернов (<code>findOrphanSpacePositions</code>) см. в hanging-chars.</p>
+<p>Так ставятся NBSP (<code>U+00A0</code>) после одиночных букв и предлогов;
+разбор трёх паттернов позиций (<code>findOrphanSpacePositions</code>) см. в hanging-chars.</p>
 <h2 id="74">7.4. Построение текста с нуля</h2>
-<p><code>StoryBuilder.addText(utf8Text)</code> (сигнатура сверена с онлайн-SDK),
-разметка — <code>GlyphAtts</code>. Так color-palette-gen печатает подписи свотчей,
+<p><code>StoryBuilder.addText(utf8Text)</code> (сигнатура сверена с онлайн-SDK).
+Проверенный пример целиком — создание фрейма, чтение обратно,
+жирное начертание:</p>
+<pre><code class="language-js">&quot;use strict&quot;;
+const { FrameTextNodeDefinition } = require('/nodes.js');
+const { Rectangle } = require('/geometry.js');
+const { StoryBuilder } = require('/storybuilder.js');  // НЕ '/story.js'!
+const { StoryDelta } = require('/storydelta.js');
+const { FontWeight } = require('/fonts.js');
+const { Selection, TextSelection } = require('/selections.js');
+
+// Создать фрейм с текстом:
+const sb = StoryBuilder.create();
+sb.setToFrameTextDefaultStyle(doc.dpi, doc.rasterFormat);
+sb.addText('Hello textbook');
+const def = FrameTextNodeDefinition.createFromStoryBuilder(
+  new Rectangle(50, 50, 300, 100), sb);
+const builder = AddChildNodesCommandBuilder.create();
+builder.addNode(def);
+const cmd = builder.createCommand(false);
+doc.executeCommand(cmd);
+const node = [...cmd.newNodes][0];
+
+// Прочитать обратно:
+const si = node.storyInterface;
+const back = si.story.getText(si.storyRange.begin, si.storyRange.end - si.storyRange.begin);
+console.log(back);   // Hello textbook
+
+// Сделать весь текст жирным:
+const sel = Selection.create(doc, node);
+sel.addSubSelectionForNode(node,
+  TextSelection.create([{ begin: si.storyRange.begin, end: si.storyRange.end }]));
+doc.formatText(StoryDelta.createWeight(FontWeight.Bold), sel);
+</code></pre>
+<p>Проверено в Affinity: <code>Text node: true</code>, <code>Roundtrip: Hello textbook</code>,
+форматирование применено без ошибок.</p>
+<p>Жирность — это <code>StoryDelta.createWeight(FontWeight.Bold)</code> + <code>doc.formatText</code>
+(образец — <code>docs/JSLib/examples/boldItalics.js</code>). <code>GlyphAtts.DoubleType.Bold</code>
+не существует. Так color-palette-gen печатает подписи свотчей,
 а chart-builder — подписи осей и легенды.</p>
 <h2 id="_7">Упражнения</h2>
 <ol>
@@ -281,6 +401,14 @@ compound.addCommand(DocumentCommand.createSetText(sel, ' '));
 </tr>
 </tbody>
 </table>
+<p>Чтение выделения — форма из примера SDK <code>makeGrid.js</code>;
+удаление — проверено живьём в Affinity (<code>Deleted, children now: 0</code>):</p>
+<pre><code class="language-js">const nodes = doc.selection.nodes.toArray();  // форма из makeGrid
+console.log('Selected: ' + nodes.length);
+// Удалить выделенное одной командой (JSLib-имя! raw: createDeleteNodesCommand):
+doc.executeCommand(DocumentCommand.createDeleteSelection(
+  Selection.create(doc, nodes), false));
+</code></pre>
 <h2 id="83">8.3. Проверка перед действием</h2>
 <p><code>selection.isEmpty()</code>, <code>itemCount</code>, <code>firstNode</code> — Bail out, если пользователь
 ничего не выделил (chart-builder требует выбранный FrameText-узел
@@ -294,14 +422,32 @@ compound.addCommand(DocumentCommand.createSetText(sel, ' '));
 <h1 id="9-ui">Глава 9. Диалоги и UI</h1>
 <h2 id="91">9.1. Показ диалога</h2>
 <pre><code class="language-js">&quot;use strict&quot;;
-const { Dialog } = require('/dialog.js');
+const { Dialog, DialogResult } = require('/dialog.js');
 // const result = dialog.runModal();
-// if (result === DialogResult.OK) { ... }
+// if ((result?.value ?? result) == DialogResult.Ok.value) { ... }
+// Значения: DialogResult.Ok / DialogResult.Cancel (сравнение через .value).
 </code></pre>
 <p><code>Dialog.show()</code> deprecated — только <code>runModal()</code> (<code>sdk/ui-dialogs.md</code>, 24 API).
 Контролы: <code>ComboBox</code>, <code>CheckBox</code>, <code>Switch</code>, <code>TextBox</code>, <code>UnitValueEditor</code>,
 <code>ColourPicker</code>, <code>FillEditor</code>/<code>StrokeEditor</code>, <code>FontPicker</code>, <code>RadioGroup</code>,
-<code>Button</code>/<code>ButtonSet</code>, <code>StaticText</code> (<code>DialogResult.OK</code> — подтверждение).</p>
+<code>Button</code>/<code>ButtonSet</code>, <code>StaticText</code> (<code>DialogResult.Ok</code> — подтверждение).</p>
+<p>Проверено в Affinity (построение без показа — <code>runModal()</code> ждёт клика
+пользователя и в автоматических прогонах не вызывается):</p>
+<pre><code class="language-js">&quot;use strict&quot;;
+const { Dialog, DialogResult } = require('/dialog.js');
+const { UnitType } = require('/units.js');
+const { RGBA8 } = require('/colours.js');
+
+const dlg = Dialog.create('Probe');
+const col = dlg.addColumn();
+const grp = col.addGroup('Params');
+const w = grp.addUnitValueEditor('W', UnitType.Pixel, doc.units, 500, 1);
+grp.addSwitch('Legend', true);
+grp.addComboBox('Type', ['Line', 'Bar', 'Donut'], 0);
+grp.addColourPicker('Color', RGBA8(255, 0, 0, 255));
+console.log('W=' + w.value);   // 500
+// DialogResult.Ok.value === 1, DialogResult.Cancel.value === 0
+</code></pre>
 <h2 id="92-chart-builder">9.2. Диалог chart-builder как образец</h2>
 <p>Заголовок <code>Chart Builder</code>, ширина 350: тип (<code>Line/Bar/Donut</code>),
 размеры W/H (дефолт 500×400, <code>&lt;= 0</code> → 500/400), толщина, сетка (2–20),
@@ -348,6 +494,9 @@ const { Dialog } = require('/dialog.js');
 const { app } = require('/application.js');
 console.log(app.userDesktopPath);       // единственный доступный корень
 </code></pre>
+<p>Проверено в Affinity: <code>Desktop: C:\Users\nodeus\Desktop</code>.
+Пресеты экспорта (только чтение, без записи файлов):
+<code>FileExportOptions.allPresetNames</code> → <code>PNG | PNG-8 (dithered) | PNG-HDR …</code>.</p>
 <p>Любой путь вне Desktop — ошибка. Бинарные данные — через <code>/buffer.js</code>.</p>
 <h2 id="112">11.2. Сеть</h2>
 <p><code>HttpRequest</code>/<code>HttpResponse</code> (<code>affinity:network</code>, методы <code>RequestMethod</code>,

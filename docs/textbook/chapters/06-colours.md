@@ -13,6 +13,34 @@ const { Colour, ColourProfileSet } = require('/colours.js');
 толщина обводки). Градиент с новым трансформом — клоном:
 `cloneWithNewTransform` (так color-palette-gen рисует свотчи 120×40).
 
+```js
+"use strict";
+const { FillDescriptor, SolidFill, FillType } = require('/fills.js');
+const { RGBA8, Colour } = require('/colours.js');
+const { BlendMode } = require('/commands.js');  // реэкспорт енама
+const { Selection } = require('/selections.js');
+
+// Назначить сплошную заливку:
+const fill = FillDescriptor.createSolid(
+  SolidFill.create(RGBA8(66, 133, 244, 255)), BlendMode.Normal);
+doc.executeCommand(DocumentCommand.createSetBrushFill(Selection.create(doc, node), fill));
+
+// Прочитать обратно:
+const d = node.brushFillDescriptor;
+console.log('hasBrush: ' + node.hasBrushFill);                    // true
+console.log(d.fill.fillType.value === FillType.Solid.value);      // true (сравнение через .value!)
+const rgba = new Colour(d.fill.colour.handle).rgba8;              // сырой хэндл → обёртка
+console.log(rgba.r + ',' + rgba.g + ',' + rgba.b + ',' + rgba.alpha);  // 66,133,244,255
+```
+Проверено в Affinity: roundtrip цвета точный (`66,133,244,255`).
+
+Три правила, без которых заливки не заведутся:
+1. `FillDescriptor.createDefault()` **не существует** — используйте
+   `createSolid(fill, blendMode)` / `createNone()` / `create(...)`.
+2. `d.fill` — уже объект заливки (`SolidFill`): цвет — `d.fill.colour`,
+   а не `d.fill.solidFill`.
+3. Сырые цвета из градиентов — хэндлы: оборачивайте `new Colour(handle)`.
+
 ## 6.2. Сканирование цветов спреда
 
 Паттерн из color-palette-gen (протестирован): рекурсивный обход,
