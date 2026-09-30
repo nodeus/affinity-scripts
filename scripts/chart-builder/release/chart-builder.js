@@ -1,25 +1,26 @@
 /**
  * name: Chart Builder
  * description: Build bar, column, and pie diagrams based on the data in the text object directly in affinity.
- * version: 1.5.1
+ * version: 1.5.2
  * author: nodeus
  */
 
 "use strict";
 
 const { Document } = require("/document.js");
-const { AddChildNodesCommandBuilder, NodeChildType, BlendMode, InsertionMode, DocumentCommand } = require("/commands.js");
+const { AddChildNodesCommandBuilder, NodeChildType, BlendMode, InsertionMode, DocumentCommand, CompoundCommandBuilder } = require("/commands.js");
 const { ShapeNodeDefinition, FrameTextNodeDefinition, PolyCurveNodeDefinition, ContainerNodeDefinition } = require("/nodes.js");
 const { Shape, ShapeType, ShapeRectangle, ShapeCornerType } = require("/shapes.js");
 const { Rectangle, CurveBuilder, PolyCurve } = require("/geometry.js");
 const { Colour } = require("/colours.js");
 const { FillDescriptor, SolidFill } = require("/fills.js");
-const { LineStyleDescriptor } = require("/linestyle.js");
+const { LineStyleDescriptor, LineStyle, LineStyleMask } = require("/linestyle.js");
 const { StoryBuilder } = require("/storybuilder.js");
 const { GlyphAtts } = require("/glyphatts.js");
 const { Dialog, DialogResult } = require("/dialog.js");
+const { Selection } = require("/selections.js");
 const { UnitType } = require("/units.js");
-const { ParagraphAtts } = require("/paragraphatts.js");
+const { ParagraphAtts, ParagraphAlignXType } = require("/paragraphatts.js");
 
 const PAL=[
   {r:66,g:133,b:244},{r:234,g:67,b:53},{r:251,g:188,b:4},{r:52,g:168,b:83},
@@ -35,7 +36,7 @@ const PAL=[
 function mkC(r){return Colour.createRGBA8({r:r.r,g:r.g,b:r.b,alpha:255})}
 function mkF(r){return FillDescriptor.createSolid(SolidFill.create(mkC(r)),BlendMode.Normal)}
 function addRect(b,x,y,w,h,c,radius){if(w<=0||h<=0)return;var sh=ShapeRectangle.create();sh.setAbsoluteSizes(true,w,h);var r=radius||0;if(r>0){sh.topLeft.cornerType=ShapeCornerType.Round;sh.topLeft.setRadius(r,w,h);sh.topRight.cornerType=ShapeCornerType.Round;sh.topRight.setRadius(r,w,h);sh.bottomLeft.cornerType=ShapeCornerType.Round;sh.bottomLeft.setRadius(r,w,h);sh.bottomRight.cornerType=ShapeCornerType.Round;sh.bottomRight.setRadius(r,w,h);}b.addNode(ShapeNodeDefinition.create(sh,new Rectangle(x,y,w,h),c?mkF(c):FillDescriptor.createNone(),null,null,null))}
-function addText(b,x,y,w,h,t,sz,c){var ga=GlyphAtts.create();ga.height=sz;ga.brushFill=FillDescriptor.createSolid(SolidFill.create(mkC(c)),BlendMode.Normal);var pa=ParagraphAtts.create();pa.alignXType=1;var sb=StoryBuilder.create();sb.setParagraphAtts(pa);sb.setGlyphAtts(ga);sb.addText(t);
+function addText(b,x,y,w,h,t,sz,c){var ga=GlyphAtts.create();ga.height=sz;ga.brushFill=FillDescriptor.createSolid(SolidFill.create(mkC(c)),BlendMode.Normal);var pa=ParagraphAtts.create();pa.alignXType=ParagraphAlignXType.Centre;var sb=StoryBuilder.create();sb.setParagraphAtts(pa);sb.setGlyphAtts(ga);sb.addText(t);
 // No vertical-alignment API in SDK: fit frame to text height, centre on anchor (emulates Centre Vertically)
 var lines=t.split("\n").length;var newH=lines*sz*LEAD;if(newH>h||newH<=0)newH=h;var ny=y+(h-newH)/2;b.addNode(FrameTextNodeDefinition.createFromStoryBuilder(new Rectangle(x,ny,w,newH),sb))}
 function getCol(cc,si,di){return(cc&&cc[di!==undefined?di:si])?cc[di!==undefined?di:si]:PAL[si%PAL.length]}
@@ -61,17 +62,21 @@ function addPolyLine(b,x1,y1,x2,y2,sw,c){
   b._lineStyles.push({weight:sw,cap:1,join:1,type:1,miterLimit:2,strokeAlignment:0});
 }
 
-// Apply line styles after batch execute
+// Apply line styles after batch execute — ONE compound command (single undo step)
 function applyLineStyles(doc,builder){
   if(!builder._lineStyles||builder._lineStyles.length===0) return;
   var styles=builder._lineStyles;
   var si=0;
+  var compound=CompoundCommandBuilder.create();
+  var pxPerPt=doc.dpi/72;
 
   function findPolyCurves(node){
     if(si>=styles.length) return;
     if(node.isPolyCurveNode){
       var s=styles[si];
-      node.lineWeightPts=s.weight;
+      var ls=LineStyle.createDefault();
+      ls.weight=s.weight*pxPerPt;
+      compound.addCommand(DocumentCommand.createSetLineStyle(Selection.create(doc,node),ls,{lineStyleMask:LineStyleMask.Weight}));
       si++;
     }
     if(node.children){
@@ -88,6 +93,7 @@ function applyLineStyles(doc,builder){
       findPolyCurves(spread.children.at(i));
     }
   }
+  doc.executeCommand(compound.createCommand());
 }
 
 function parseData(text){
@@ -287,7 +293,7 @@ function buildSingleDonut(b,vals,ox,oy,ds,ir,showPercent,colors){
 
   var ga=GlyphAtts.create();var bigH=Math.max(14,ds*0.1);ga.height=bigH;
   ga.brushFill=FillDescriptor.createSolid(SolidFill.create(mkC({r:50,g:50,b:50})),BlendMode.Normal);
-  var pa=ParagraphAtts.create();pa.alignXType=1;
+  var pa=ParagraphAtts.create();pa.alignXType=ParagraphAlignXType.Centre;
   var sb=StoryBuilder.create();sb.setParagraphAtts(pa);sb.setGlyphAtts(ga);sb.addText(total.toString());
   var ga2=GlyphAtts.create();var smallH=Math.max(9,ds*0.04);ga2.height=smallH;
   ga2.brushFill=FillDescriptor.createSolid(SolidFill.create(mkC({r:120,g:120,b:120})),BlendMode.Normal);
@@ -409,7 +415,7 @@ tl.setOnValueChangedHandler(updateVisibility);
 updateVisibility();
 
 var result=dlg.runModal();
-if(result!==DialogResult.Ok){console.log("Cancelled");return;}
+if((result&&result.value!==undefined?result.value:result)!==DialogResult.Ok.value){console.log("Cancelled");return;}
 
 var w=we.value;if(w<=0)w=500;
 var h=he.value;if(h<=0)h=400;

@@ -1,7 +1,7 @@
 /**
  * name: Color Palette Generator
  * description: Extracts all fill, stroke, and gradient colors from selected nodes or entire spread. Displays swatches with RGB, CMYK, HSL, and HEX values, plus gradient stops. Groups outputs by fills, strokes, and gradients.
- * version: 9.2.0
+ * version: 9.2.1
  * author: nodeus
  */
 
@@ -13,7 +13,7 @@ const { ShapeNodeDefinition, FrameTextNodeDefinition, ContainerNodeDefinition } 
 const { Shape, ShapeType } = require('/shapes.js');
 const { Rectangle, Transform } = require('/geometry.js');
 const { Colour, ColourProfileSet } = require('/colours.js');
-const { FillDescriptor, SolidFill, FillType, GradientFill, GradientFillType } = require('/fills.js');
+const { FillDescriptor, SolidFill, FillType } = require('/fills.js');
 const { StoryBuilder } = require('/storybuilder.js');
 const { GlyphAtts } = require('/glyphatts.js');
 const { Selection } = require('/selections.js');
@@ -171,6 +171,8 @@ function groupSection(doc, nodes, name) {
   const groupDef = ContainerNodeDefinition.create(name);
   const gBuilder = AddChildNodesCommandBuilder.create();
   gBuilder.addNode(groupDef);
+  // NOTE: relies on doc.selection holding the just-created items
+  // (addItem uses createCommand(true, ...) which selects new nodes)
   gBuilder.setInsertionTargetSelection(doc.selection);
   const gCmd = gBuilder.createCommand(true, NodeChildType.Main);
   doc.executeCommand(gCmd);

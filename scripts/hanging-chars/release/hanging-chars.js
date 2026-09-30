@@ -2,7 +2,7 @@
 
 name: Hanging chars and prepositions
 description: Replaces spaces after lone single characters or prepositions with non-breaking spaces (for slavic languages). Based on initial script by JiriKrblich
-version: 1.1.0
+version: 1.1.1
 author: nodeus
 */
 
@@ -30,16 +30,16 @@ const PREPOSITIONS_2 = new Set([
 'во','на','не','ни','об','от','по','до','за','из','со','ко','ну','уж','вы',
 // Английские 2-буквенные предлоги
 'in','on','at','to','by','up','of','if','no','or','as','an','be','is','it',
-'we','us','my','me','he','do','go','so','if','am'
+'we','us','my','me','he','do','go','so','am'
 ]);
 
 const PREPOSITIONS_3 = new Set([
 // Русские 3-буквенные предлоги
-'под','при','про','для','без','над','��бо','изо','ото','меж',
+'под','при','про','для','без','над','обо','изо','ото','меж',
 // Английские 3-буквенные предлоги
 'the','and','for','but','not','are','you','all','can','had','her','was',
 'one','our','out','day','get','has','him','his','how','its','may','new',
-'now','old','see','two','who','boy','did','she','use','her','way','many',
+'now','old','see','two','who','boy','did','she','use','way','many',
 'oil','sit'
 ]);
 
@@ -118,7 +118,7 @@ const node = stack.pop();
         totalNodes++;
       }
     } catch (e) {
-      errors.push(e.message);
+      errors.push(String((e && e.message) || e));
     }
   }
 
@@ -129,9 +129,9 @@ const node = stack.pop();
 
 let msg;
 if (totalChanged > 0) {
-msg = Fixed ${totalChanged} of ${totalNodes} text field(s).\n\nAll changes can be undone with Ctrl+Z.;
+msg = `Fixed ${totalChanged} of ${totalNodes} text field(s).\n\nAll changes can be undone with Ctrl+Z.`;
 } else if (totalNodes > 0) {
-msg = Checked ${totalNodes} text field(s).\n\nEverything already looks correct.;
+msg = `Checked ${totalNodes} text field(s).\n\nEverything already looks correct.`;
 } else {
 msg = 'No text fields found.';
 }

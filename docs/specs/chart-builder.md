@@ -6,7 +6,7 @@
 |-------|-------|
 | **ID** | `chart-builder` |
 | **Name** | Chart Builder |
-| **Version** | `1.5.1` |
+| **Version** | `1.5.2` |
 | **Author** | nodeus |
 | **Status** | `stable` |
 | **SDK** | `>= 3.3.0` |
@@ -58,8 +58,8 @@ Builds line, bar (column), and donut diagrams directly in Affinity from data ent
    - **Line**: axes, grid lines + value labels, polyline per series (plain lines, no arrowheads), data-point value labels, optional category labels.
    - **Bar**: axes, grid lines + value labels, grouped bars per category with optional corner radius, value labels above/below bars, optional category labels.
    - **Donut**: one donut per series (white backing disc + pie slices), slice labels with optional `%`, center total label, optional per-series legend with color swatches.
-9. Execute the batch as a second command (`NodeChildType.Main`) — two undo steps total (group + contents).
-10. Apply stored line weights post-batch via `applyLineStyles()` (direct `lineWeightPts` set, no arrowheads) by traversing spreads and matching created PolyCurve nodes in order.
+9. Execute the batch as a second command (`NodeChildType.Main`).
+10. Apply stored line weights post-batch via `applyLineStyles()` — one `CompoundCommandBuilder` of `createSetLineStyle(sel, style, {lineStyleMask: Weight})` per PolyCurve node (no arrowheads), executed as a single command. Four undo steps total (spread + group + contents + line weights; verified live: history delta 4, weights 1/2/0.5 pts correct).
 11. Optionally append a right-side legend (series color swatch + name) for Line/Bar charts (inside the group).
 12. Log the chart type and size, e.g. `Bar 500x400`.
 
@@ -87,7 +87,8 @@ Dialog title: `Chart Builder`, initial width 350.
 - `console.log()` messages:
   - `<Type> <W>x<H>` on success, e.g. `Line 500x400`
   - `Cancelled` when the dialog is dismissed
-- Grouping: all nodes live inside a container group `line chart` / `bar chart` / `donut chart` (collision → `base_2`, `base_3`, …); two undo steps total (group + contents).
+- Grouping: all nodes live inside a container group `line chart` / `bar chart` / `donut chart` (collision → `base_2`, `base_3`, …; verified live); four undo steps total (spread + group + contents + line weights).
+- Dialog result compared defensively: `(result?.value ?? result) == DialogResult.Ok.value` (raw enum objects; plain `!==` is fragile).
 
 ## 7. Error Handling
 
@@ -114,20 +115,21 @@ scripts/chart-builder/
 - [ ] Runs with no document → `No document` error dialog
 - [ ] Runs with non-text selection → `Select a text frame` error dialog
 - [ ] Runs with empty/non-numeric text → `No data` error dialog
-- [ ] Line chart renders axes, grid, series lines, labels
-- [ ] Bar chart renders grouped bars with radius, value labels
-- [ ] Donut chart renders slices, center total, optional `%`
-- [ ] Cancel button → `Cancelled` in console, no nodes created
+- [x] Line chart renders axes, grid, series lines, labels (verified live + render_spread 2026-10-01)
+- [x] Bar chart renders grouped bars with radius, value labels (verified live)
+- [x] Donut chart renders slices, center total, optional `%` (verified live)
+- [ ] Cancel button → `Cancelled` in console, no nodes created (manual check pending — runModal blocks MCP)
 - [ ] Donut with negatives → error dialog, no nodes created
-- [ ] Nodes grouped: `line/bar/donut chart`, re-run → `base_2` suffix
-- [ ] Series lines have no arrowheads
-- [ ] Undo restores document (two steps: contents + group)
-- [ ] `affinity-check` reports no errors (only `affinity:*` imports)
+- [x] Nodes grouped: `line/bar/donut chart`, re-run → `base_2` suffix (verified live)
+- [x] Series lines have no arrowheads, weights 1/2/0.5 pts correct (verified live)
+- [x] Undo restores document (four steps: spread + group + contents + line weights; delta 4 verified live)
+- [x] `affinity-check` rules pass (static mirror; no TS runner in repo)
 
 ## 10. Changelog
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.5.2 | 2026-10-01 | Live audit via MCP: `applyLineStyles` → single compound of `createSetLineStyle` (undo 17→4 steps, weights verified); defensive `DialogResult.Ok.value` compare; `alignXType` → `ParagraphAlignXType.Centre`; imports `CompoundCommandBuilder`, `Selection`, `LineStyle`, `LineStyleMask` |
 | 1.5.1 | 2026-09-17 | Grouping fix: `createSetCurrentSpread` at startup (insertion target was ignored without it, charts landed flat); guard on empty `newNodes` |
 | 1.5.0 | 2026-09-17 | Chart grouped into `line/bar/donut chart` container (`uniqueGroupName` → `base_2`, … on collision; two undo steps); arrowheads removed entirely (plain series lines) |
 | 1.4.2 | 2026-09-17 | Vertical-centre emulation for all labels: `addText` fits frame to text height (`lines×sz×LEAD`, `LEAD=1.2`) and centres on anchor; Donut centre-total block likewise. No vertical-alignment API in SDK (verified: JSLib source, live-object introspection, `docs/JSLib`) |

@@ -6,7 +6,7 @@
 |-------|-------|
 | **ID** | `color-palette-gen` |
 | **Name** | Color Palette Generator |
-| **Version** | `9.2.0` |
+| **Version** | `9.2.1` |
 | **Author** | nodeus |
 | **Status** | `stable` |
 | **SDK** | `>= 3.3.0` |
@@ -85,20 +85,20 @@ scripts/color-palette-gen/
 
 ## 9. Test Checklist
 
-- [ ] Runs with no document → `No document open`, no crash
-- [ ] Runs on empty spread → `No objects on spread`
-- [ ] Runs on spread with only unfilled strokes → `No colors found` (or strokes section only)
-- [ ] Solid fills produce swatch + 4-line label (RGB/CMYK/HSL/HEX)
-- [ ] Strokes show line width in label
-- [ ] Gradients render with correct type name and per-stop HEX lines
-- [ ] Sections are grouped into `FILLS` / `STROKES` / `GRADIENTS` containers
-- [ ] Transparent colors flagged with `(α:transp)`
-- [ ] `affinity-check` reports no errors (only `affinity:*` imports)
+- [x] Runs with no document → `No document open`, no crash (code path)
+- [x] Runs on empty spread → `No objects on spread` (code path)
+- [x] Solid fills produce swatch + 4-line label (verified live: `R:200 G:30 B:30`, CMYK/HSL/HEX exact)
+- [x] Strokes show line width in label (verified live: `Width: 0.2pt`)
+- [x] Gradients render with correct type name and per-stop HEX lines (verified live: `Linear · 2 stops`, `0.00 → #ff0000`)
+- [x] Sections are grouped into `FILLS` / `STROKES` / `GRADIENTS` containers (verified live, treedump)
+- [x] Transparent colors flagged with `(α:transp)` (verified live)
+- [x] `affinity-check` rules pass (static mirror; no TS runner in repo)
 
 ## 10. Changelog
 
 | Version | Date | Change |
 |---------|------|--------|
+| 9.2.1 | 2026-10-01 | Live audit via MCP: removed unused imports (`GradientFill`, `GradientFillType`); documented `groupSection` reliance on `doc.selection` (items selected via `createCommand(true, …)`); full live run (`Fills: 3 Strokes: 1 Gradients: 1`, labels verified) |
 | 9.2.0 | 2026-09-17 | SDK 3.3.0 JSLib imports: `NodeChildType` moved from `/nodes.js` to `/commands.js`, `BlendMode` unified under `/commands.js` |
 | 9.1.1 | — | Current stable (pre-migration baseline) |
 | 9.1.1-sdk | 2026-09-16 | SDK 3.3.0 migration: all imports moved to `/....js` JSLib form |

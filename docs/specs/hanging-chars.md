@@ -6,7 +6,7 @@
 |-------|-------|
 | **ID** | `hanging-chars` |
 | **Name** | Hanging Chars and Prepositions |
-| **Version** | `1.0.0` |
+| **Version** | `1.1.1` |
 | **Author** | nodeus (based on initial script by JiriKrblich) |
 | **Status** | `stable` |
 | **SDK** | `>= 3.3.0` |
@@ -79,19 +79,21 @@ scripts/hanging-chars/
 
 ## 9. Test Checklist
 
-- [ ] Runs with no document → error dialog, no crash
-- [ ] Runs on document without text → `No text fields found.` dialog
-- [ ] Single letters (`я иду`, `a cat`) get NBSP after the letter
-- [ ] Listed 2-letter prepositions (`на столе`, `in box`) get NBSP
-- [ ] Listed 3-letter prepositions (`под столом`, `the cat`) get NBSP
-- [ ] Non-listed 2/3-letter words (`дом стоит`) are NOT touched
-- [ ] Already-fixed text → `Everything already looks correct.`
-- [ ] Undo (`Ctrl+Z`) restores original spaces
-- [ ] `affinity-check` reports no errors (only `affinity:*` imports)
+- [x] Runs with no document → error dialog, no crash (code path; dialog construction verified)
+- [x] Runs on document without text → `No text fields found.` dialog
+- [x] Single letters (`я иду`, `a cat`) get NBSP after the letter (verified live, char codes)
+- [x] Listed 2-letter prepositions (`на столе`, `in box`) get NBSP (verified live)
+- [x] Listed 3-letter prepositions (`под столом`, `the cat`) get NBSP (verified live)
+- [x] Non-listed 2/3-letter words (`дом стоит`) are NOT touched (verified live)
+- [x] Already-fixed text → `Everything already looks correct.` (verified live, idempotent)
+- [x] Undo (`Ctrl+Z`) restores original spaces (verified live, per-field compound)
+- [x] Cross-document fix works without `createSetCurrentSpread` (verified live — explicit `Selection` targets need no spread setup)
+- [x] `affinity-check` rules pass (static mirror; no TS runner in repo)
 
 ## 10. Changelog
 
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0.0 | — | Initial stable (pre-migration baseline) |
+| 1.1.1 | 2026-10-01 | Live audit via MCP: fixed file corruption (`'обо'` was U+FFFD×2, never matched); fixed missing backticks in result messages (script could not parse at all); removed duplicate `if`/`her` list entries; hardened per-node error capture |
 | 1.1.0 | 2026-09-16 | SDK 3.3.0 migration: imports moved to `/....js` form, `Dialog.show()` → `runModal()` |
