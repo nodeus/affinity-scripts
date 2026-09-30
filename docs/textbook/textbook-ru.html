@@ -1,0 +1,403 @@
+<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8">
+<title>Учебник по скриптингу в Affinity</title><style>
+body{font-family:"Segoe UI",Arial,sans-serif;max-width:900px;margin:2em auto;line-height:1.55;color:#111}
+pre{background:#f4f4f4;padding:1em;overflow-x:auto;border:1px solid #ddd}
+code{font-family:Consolas,"Courier New",monospace}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:4px 8px;text-align:left}
+h1{border-bottom:2px solid #333}h2{color:#1a3a5c}
+</style></head><body><h1 id="affinity-sdk-33000">Учебник по скриптингу в Affinity (SDK 33000)</h1>
+<blockquote>
+<p>JavaScript-скрипты для Affinity Designer / Photo / Publisher.
+Источник: <code>docs/textbook/chapters/</code>. Онлайн-SDK: https://sdk.affinity.studio/33000/js/index.html
+Референс API: <code>docs/sdk/</code>. Гайды: <code>docs/guides/</code>.</p>
+</blockquote>
+<h1 id="1">Глава 1. Как выполняются скрипты</h1>
+<h2 id="11-affinity">1.1. Что такое скрипт Affinity</h2>
+<p>Скрипт — синхронный JavaScript, который выполняется <strong>внутри</strong> Affinity
+(Designer / Photo / Publisher). Вы отправляете код через MCP-инструмент
+<code>affinity_execute_script</code>, Affinity выполняет его и возвращает текст из <code>console.log()</code>.</p>
+<p>Три следствия:</p>
+<ol>
+<li><strong>Нет <code>return</code>.</strong> Результат — только <code>console.log()</code>.</li>
+<li><strong>Нет <code>module.exports</code>.</strong> Файл должен выполняться сразу, сверху вниз.</li>
+<li><strong>Первая строка — <code>"use strict"</code>.</strong></li>
+</ol>
+<h2 id="12">1.2. Самый маленький скрипт</h2>
+<pre><code class="language-js">&quot;use strict&quot;;
+console.log('Hello from Affinity!');
+</code></pre>
+<p>Выполните его через <code>affinity_execute_script</code> — в ответ придёт строка <code>Hello from Affinity!</code>.</p>
+<h2 id="13-mcp-">1.3. MCP-сервер</h2>
+<p>Сервер работает на <code>http://localhost:6767</code> (конфиг <code>.mimocode/config.json</code>).
+Инструменты: выполнение, чтение документации SDK, библиотека скриптов,
+рендер спреда/выделения, поиск подсказок. Полный список — в <code>guides/mcp-tools.md</code>.</p>
+<p>Обязательное начало работы:</p>
+<pre><code>affinity_read_sdk_documentation_topic(filename=&quot;preamble&quot;)
+affinity_search_sdk_hints(prompt=&quot;ваша задача&quot;)
+</code></pre>
+<h2 id="14">1.4. Ограничения среды</h2>
+<ul>
+<li>Файловая система — <strong>только рабочий стол</strong> (<code>app.userDesktopPath</code>).</li>
+<li>Рендер результата — JPEG не больше 1024px.</li>
+<li>Если команда вернула <code>NOT_ALLOWED</code> — пользователь запретил AI/файлы/сеть
+  в настройках Affinity. Это не баг скрипта.</li>
+<li>Скрипты синхронные: <code>*Async</code>-варианты методов SDK вам не нужны.</li>
+</ul>
+<h2 id="_1">Упражнения</h2>
+<ol>
+<li>Выполните hello-скрипт и найдите его вывод в ответе инструмента.</li>
+<li>Прочитайте <code>preamble</code> через <code>affinity_read_sdk_documentation_topic</code>.</li>
+<li>Выполните <code>affinity_list_sdk_documentation</code> и найдите темы <code>document.js</code> и <code>dialog.js</code>.</li>
+</ol>
+<h1 id="2">Глава 2. Документ и спреды</h1>
+<h2 id="21">2.1. Текущий документ</h2>
+<pre><code class="language-js">&quot;use strict&quot;;
+const { Document } = require('/document.js');
+const doc = Document.current;          // активный документ (DocumentApi.getCurrent)
+if (!doc) { console.log('No document open'); return; }
+console.log('Title: ' + doc.title);    // свойство JSLib над getTitle()
+console.log('Spreads: ' + doc.spreads.length);
+console.log('Units: ' + doc.units + ' DPI: ' + doc.dpi);
+</code></pre>
+<p><code>Document.current</code> нет — скрипт вежливо завершается через <code>console.log</code>,
+а не падает с исключением. Так начинается <strong>каждый</strong> скрипт.</p>
+<p>Другие способы получить документ: <code>Document.enumerateOpen()</code> (все открытые),
+<code>Document.load(path)</code> (открыть с Desktop). Создание: <code>createFromOptions</code>,
+<code>createFromPreset</code> (<code>affinity:dom</code>, см. <code>sdk/dom-document.md</code>).</p>
+<h2 id="22">2.2. Текущий спред</h2>
+<pre><code class="language-js">&quot;use strict&quot;;
+const { Document } = require('/document.js');
+const { DocumentCommand } = require('/commands.js');
+const doc = Document.current;
+if (!doc) { console.log('No document open'); return; }
+const spread = doc.currentSpread;      // свойство над getCurrentSpread()
+doc.executeCommand(DocumentCommand.createSetCurrentSpread(spread));
+</code></pre>
+<p>Вызов <code>createSetCurrentSpread</code> <strong>обязателен перед любыми правками</strong>:
+без него цель вставки игнорируется и новые узлы ложатся плоско на документ
+(реальный баг chart-builder 1.5.0, исправлен в 1.5.1).</p>
+<h2 id="23">2.3. Все спреды документа</h2>
+<pre><code class="language-js">for (const spread of doc.spreads) {
+  console.log('Children: ' + spread.children.length);
+}
+</code></pre>
+<p>Пакетные скрипты (типа hanging-chars) обходят <strong>все</strong> спреды, а не только текущий.</p>
+<h2 id="_2">Упражнения</h2>
+<ol>
+<li>Выведите название, путь (<code>doc.path</code>) и флаг изменений (<code>doc.isDirty</code>) открытого документа.</li>
+<li>Посчитайте суммарное число дочерних узлов по всем спредам.</li>
+<li>Откройте второй документ и перечислите оба через <code>enumerateOpen()</code>.</li>
+</ol>
+<h1 id="3">Глава 3. Узлы и дерево документа</h1>
+<h2 id="31">3.1. Что такое узел</h2>
+<p>Всё на спреде — узлы: фигуры, текстовые фреймы, изображения, группы,
+направляющие. У каждого узла есть дети (<code>node.children</code>) — получается дерево.
+Тип узла проверяется флагами: <code>node.isTextNode</code>, а имя для человека —
+<code>node.userDescription</code> (именно по нему chart-builder ищет группы <code>line chart</code>).</p>
+<h2 id="32">3.2. Обход дерева</h2>
+<p>Два способа — рекурсия и явный стек:</p>
+<pre><code class="language-js">&quot;use strict&quot;;
+// Рекурсия (коротко):
+function walk(node, fn) {
+  fn(node);
+  if (node.children) for (const ch of node.children) walk(ch, fn);
+}
+for (const child of spread.children) walk(child, (n) =&gt; { /* ... */ });
+
+// Явный стек (hanging-chars обходит ВСЕ спреды именно так):
+for (const spread of doc.spreads) {
+  const stack = [...spread.children];
+  while (stack.length) {
+    const node = stack.pop();
+    if (node.isTextNode) { /* ... */ }
+    if (node.children) for (const ch of node.children) stack.push(ch);
+  }
+}
+</code></pre>
+<h2 id="33">3.3. Родители и корень</h2>
+<p>Узел знает родителя (<code>node.parent</code>), документ — корневой узел (<code>doc.rootNode</code>).
+Полный перечень типов узлов и их методов — <code>sdk/dom-nodes.md</code>,
+контентных (фигуры, текст, картинки) — <code>sdk/dom-content.md</code>.</p>
+<h2 id="_3">Упражнения</h2>
+<ol>
+<li>Соберите статистику: сколько узлов каждого типа на спреде
+   (различайте хотя бы текстовые: <code>isTextNode</code> — и все остальные).</li>
+<li>Найдите самый глубоко вложенный узел и выведите глубину.</li>
+<li>Найдите все группы с <code>userDescription === 'line chart'</code>.</li>
+</ol>
+<h1 id="4-undo-preview">Глава 4. Команды, undo и preview</h1>
+<h2 id="41">4.1. Золотое правило: мутации только командами</h2>
+<p>Узлы <strong>нельзя</strong> менять напрямую присваиванием. Любое изменение —
+это команда, выполненная через документ:</p>
+<pre><code class="language-js">doc.executeCommand(какаяТоКоманда);
+</code></pre>
+<p>Команды создаются фабриками <code>DocumentCommand.create*</code> — их 363 штуки,
+полный каталог: <code>sdk/commands-catalog.md</code>. Узлы для команды заворачиваются
+в выделение: <code>Selection.create(doc, nodes)</code> (<code>sdk/dom-selections.md</code>).</p>
+<h2 id="42-undo-">4.2. Один undo-шаг на батч</h2>
+<p>Создание нескольких узлов упаковывается в <code>AddChildNodesCommandBuilder</code>
+(<code>sdk/commands.md</code>): один <code>executeCommand</code> — один шаг Ctrl+Z.
+Разнородные изменения — в <code>CompoundCommandBuilder</code> (пример: hanging-chars
+кладёт десятки <code>createSetText</code> в один undo-шаг на текстовое поле).</p>
+<pre><code class="language-js">&quot;use strict&quot;;
+const { DocumentCommand, CompoundCommandBuilder } = require('/commands.js');
+const compound = CompoundCommandBuilder.create();
+compound.addCommand(DocumentCommand.createSetText(sel, ' '));
+doc.executeCommand(compound.build());
+</code></pre>
+<h2 id="43-preview">4.3. Preview без порчи документа</h2>
+<p>Интерактивные скрипты показывают результат до нажатия OK:</p>
+<pre><code class="language-js">const historyStart = doc.history.position;
+doc.executeCommand(cmd, true);   // true = предпросмотр
+// OK:     createClearPreviews() + финальное применение
+// Cancel: createClearPreviews() + doc.history.position = historyStart
+</code></pre>
+<h2 id="44">4.4. Чтение результата команды</h2>
+<p>После <code>builder.createCommand(...)</code> созданные узлы доступны как
+<code>[...cmd.newNodes][0]</code> — так chart-builder и color-palette-gen забирают
+группу, чтобы потом сложить в неё содержимое вторым батчем.</p>
+<h2 id="_4">Упражнения</h2>
+<ol>
+<li>Объясните, почему прямой <code>node.userDescription = 'x'</code> не сработает.</li>
+<li>Соберите compound из двух команд и убедитесь, что Ctrl+Z откатывает обе сразу.</li>
+<li>Реализуйте preview: примените команду с <code>true</code>, затем откатите через history.</li>
+</ol>
+<h1 id="5">Глава 5. Фигуры и геометрия</h1>
+<h2 id="51">5.1. Фигуры как данные</h2>
+<p>Фигура (<code>affinity:geometry</code>, <code>sdk/geometry.md</code>) — это параметры:
+<code>ShapeRectangle</code>, <code>ShapeEllipse</code>, <code>ShapeStar</code>, <code>ShapeArrow</code>, <code>ShapePie</code>,
+<code>ShapeQRCode</code> и ещё ~25 типов (<code>ShapeType</code>). Сырые фабрики:
+<code>Shape.create(type)</code>, у каждого типа — свои <code>create()</code>/<code>get*</code>/<code>set*</code>
+(например, <code>ShapeArrowApi</code>: <code>setThickness</code>, <code>setLeftLength</code>, …).</p>
+<p>В скриптах фигуры обычно создаются определениями узлов
+(<code>ShapeNodeDefinition</code> из <code>/nodes.js</code>) и кладутся на спред батчем
+(глава 4). Параметры углов, заливки и обводки задаются там же.</p>
+<h2 id="52">5.2. Кривые</h2>
+<p><code>CurveBuilder</code> строит <code>PolyCurve</code> — произвольные контуры, стрелки серий
+на графиках, точки данных. Важный порядок аргументов:</p>
+<pre><code class="language-js">// PolyCurveNodeDefinition.create(polyCurve, brushFill, lineFill, lineStyle, ...)
+// lineStyle и lineFill путать НЕЛЬЗЯ: ошибка 'expected FillDescriptorHandle'
+// роняет скрипт молча (реальный случай chart-builder 1.4.1).
+</code></pre>
+<p>Серийные линии графиков — простые, без наконечников.</p>
+<h2 id="53">5.3. Трансформации</h2>
+<p><code>Rectangle</code> + <code>Transform</code>: положение, размер, поворот (<code>sdk/geometry.md</code>:
+<code>RectangleApi</code>, <code>TransformApi</code>). Палитра color-palette-gen вычисляет место
+справа от artwork: <code>x = ext.x + ext.width + 50</code>.</p>
+<h2 id="_5">Упражнения</h2>
+<ol>
+<li>Перечислите все значения <code>ShapeType</code> (подсказка: <code>sdk/geometry.md</code> + енам).</li>
+<li>Создайте <code>ShapeArrow</code> и поменяйте <code>thickness</code> через сеттер.</li>
+<li>Постройте <code>PolyCurve</code> из трёх точек и добавьте на спред батчем.</li>
+</ol>
+<h1 id="6">Глава 6. Заливки, цвета, градиенты</h1>
+<h2 id="61">6.1. Дескрипторы заливки</h2>
+<pre><code class="language-js">&quot;use strict&quot;;
+const { FillDescriptor, SolidFill, FillType, GradientFill, GradientFillType } = require('/fills.js');
+const { Colour, ColourProfileSet } = require('/colours.js');
+</code></pre>
+<p>У узла две заливки: кисть (<code>hasBrushFill</code> → <code>brushFillDescriptor</code>)
+и перо (<code>hasPenFill</code> → <code>penFillDescriptor</code>, плюс <code>lineWeightPts</code> —
+толщина обводки). Градиент с новым трансформом — клоном:
+<code>cloneWithNewTransform</code> (так color-palette-gen рисует свотчи 120×40).</p>
+<h2 id="62">6.2. Сканирование цветов спреда</h2>
+<p>Паттерн из color-palette-gen (протестирован): рекурсивный обход,
+три словаря <code>fills</code> / <code>strokes</code> / <code>gradients</code>, ключ <code>r,g,b</code> для сплошных
+и <code>fill|&lt;type&gt;|stops</code> для градиентов, прозрачность — флаг <code>α:transp</code>.
+Нечитаемые узлы пропускаются через <code>try/catch</code>.</p>
+<h2 id="63">6.3. Метки значений</h2>
+<p>Свотч 40×40 + подпись из четырёх строк: RGB, CMYK (через
+<code>ColourProfileSet.default</code>, при ошибке <code>C:? M:? Y:? K:?</code>), HSL, HEX.
+У обводок — пятая строка <code>Width: Xpt</code>. У градиентов — тип, число стопов
+и <code>position → HEX</code> по каждому стопу.</p>
+<h2 id="_6">Упражнения</h2>
+<ol>
+<li>Соберите все уникальные сплошные заливки текущего спреда в <code>console.log</code>.</li>
+<li>Найдите все обводки толще 2pt.</li>
+<li>Перечислите стопы первого найденного градиента.</li>
+</ol>
+<h1 id="7-story">Глава 7. Текст: Story, глифы, абзацы</h1>
+<h2 id="71">7.1. Анатомия текста</h2>
+<p>Текстовый узел (<code>isTextNode</code>) — это рамка. Внутри: <code>storyInterface.story</code> —
+<code>Story</code>, у неё <code>getText(begin, length)</code> для чтения. Форматирование бывает
+двух уровней: <code>GlyphAtts</code> (символ: шрифт, размер, цвет) и <code>ParagraphAtts</code>
+(абзац: выравнивание, интервалы). Полный референс: <code>sdk/story-text.md</code>
+(34 API, 332 метода).</p>
+<h2 id="72">7.2. Чтение</h2>
+<pre><code class="language-js">const originalText = story.getText(range.begin, range.end - range.begin);
+</code></pre>
+<p>Так hanging-chars читает каждое текстовое поле на каждом спреде.</p>
+<h2 id="73">7.3. Точечная запись</h2>
+<p>Запись — только командой <code>createSetText</code> через <code>TextSelection</code>:</p>
+<pre><code class="language-js">&quot;use strict&quot;;
+const { Selection, TextSelection } = require('/selections.js');
+const sel = Selection.create(doc, node);
+sel.addSubSelectionForNode(/* TextSelection: начало range.begin + pos, длина 1 */);
+compound.addCommand(DocumentCommand.createSetText(sel, ' '));
+</code></pre>
+<p>NBSP (<code>U+00A0</code>) вместо обычного пробела после одиночных букв и предлогов —
+разбор трёх паттернов (<code>findOrphanSpacePositions</code>) см. в hanging-chars.</p>
+<h2 id="74">7.4. Построение текста с нуля</h2>
+<p><code>StoryBuilder.addText(utf8Text)</code> (сигнатура сверена с онлайн-SDK),
+разметка — <code>GlyphAtts</code>. Так color-palette-gen печатает подписи свотчей,
+а chart-builder — подписи осей и легенды.</p>
+<h2 id="_7">Упражнения</h2>
+<ol>
+<li>Выведите первые 200 символов каждого текстового поля документа.</li>
+<li>Найдите все позиции <code>…на …</code> и замените пробел на NBSP одним compound.</li>
+<li>Создайте текстовый фрейм через <code>FrameTextNodeDefinition</code> + <code>StoryBuilder</code>.</li>
+</ol>
+<h1 id="8">Глава 8. Выделения</h1>
+<h2 id="81-selection">8.1. Зачем Selection</h2>
+<p>Команды не принимают «голые» узлы: их заворачивают —
+<code>Selection.create(doc, nodes)</code> (<code>sdk/dom-selections.md</code>, 14 API).
+Подвыделения уточняют цель: <code>TextSelection</code> (диапазон текста),
+кривые (<code>CurveNodeSubSelection</code>, <code>CurveEdgeSubSelection</code>),
+таблицы (<code>TableSubSelection</code>), заливки и прозрачности.</p>
+<h2 id="82">8.2. Типичные связки</h2>
+<table>
+<thead>
+<tr>
+<th>Задача</th>
+<th>Связка</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Заменить символ</td>
+<td><code>Selection</code> + <code>TextSelection</code> + <code>createSetText</code></td>
+</tr>
+<tr>
+<td>Удалить узлы</td>
+<td><code>Selection</code> + <code>createDeleteNodesCommand</code></td>
+</tr>
+<tr>
+<td>Переместить в группу</td>
+<td><code>Selection</code> + <code>createMoveNodes</code> (<code>NodeMoveType.Inside</code>)</td>
+</tr>
+<tr>
+<td>Текущее выделение пользователя</td>
+<td><code>doc.selection</code> / <code>getCurrentSelection</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="83">8.3. Проверка перед действием</h2>
+<p><code>selection.isEmpty()</code>, <code>itemCount</code>, <code>firstNode</code> — Bail out, если пользователь
+ничего не выделил (chart-builder требует выбранный FrameText-узел
+и показывает <code>Select a text frame</code>, если его нет).</p>
+<h2 id="_8">Упражнения</h2>
+<ol>
+<li>Выведите число узлов в текущем выделении пользователя.</li>
+<li>Программно выделите все текстовые узлы спреда.</li>
+<li>Переместите выделенное в новую группу одним undo-шагом.</li>
+</ol>
+<h1 id="9-ui">Глава 9. Диалоги и UI</h1>
+<h2 id="91">9.1. Показ диалога</h2>
+<pre><code class="language-js">&quot;use strict&quot;;
+const { Dialog } = require('/dialog.js');
+// const result = dialog.runModal();
+// if (result === DialogResult.OK) { ... }
+</code></pre>
+<p><code>Dialog.show()</code> deprecated — только <code>runModal()</code> (<code>sdk/ui-dialogs.md</code>, 24 API).
+Контролы: <code>ComboBox</code>, <code>CheckBox</code>, <code>Switch</code>, <code>TextBox</code>, <code>UnitValueEditor</code>,
+<code>ColourPicker</code>, <code>FillEditor</code>/<code>StrokeEditor</code>, <code>FontPicker</code>, <code>RadioGroup</code>,
+<code>Button</code>/<code>ButtonSet</code>, <code>StaticText</code> (<code>DialogResult.OK</code> — подтверждение).</p>
+<h2 id="92-chart-builder">9.2. Диалог chart-builder как образец</h2>
+<p>Заголовок <code>Chart Builder</code>, ширина 350: тип (<code>Line/Bar/Donut</code>),
+размеры W/H (дефолт 500×400, <code>&lt;= 0</code> → 500/400), толщина, сетка (2–20),
+радиус углов (Bar), по <code>ColourPicker</code> на серию из палитры 32 цветов,
+режим подписей, легенда, проценты для Donut. Отмена → <code>Cancelled</code> в консоль,
+без созданных узлов.</p>
+<h2 id="93-">9.3. Диалог-отчёт без настроек</h2>
+<p>hanging-chars показывает один модальный итог: <code>Fixed N of M text field(s)…</code>,
+<code>Everything already looks correct.</code>, <code>No text fields found.</code> + <code>Errors: …</code>.
+Ошибки отдельных узлов не роняют весь проход — копятся в отчёт.</p>
+<h2 id="_9">Упражнения</h2>
+<ol>
+<li>Соберите диалог с <code>TextBox</code> и кнопками OK/Cancel, верните ввод в <code>console.log</code>.</li>
+<li>Добавьте <code>ColourPicker</code> и покрасьте им выделенные фигуры.</li>
+<li>Реализуйте связку Preview/Cancel из главы 4 через диалог.</li>
+</ol>
+<h1 id="10-ai">Глава 10. Растр, эффекты, AI</h1>
+<h2 id="101">10.1. Растровые узлы</h2>
+<p>Модуль <code>affinity:raster</code> (<code>sdk/raster.md</code>, 22 API): пиксельный доступ
+(<code>PixelReader*</code>/<code>PixelReaderWriter*</code> — по форматам RGBA8/CMYKA8/LABA16/…),
+выделения (<code>RasterSelectionApi</code>), объекты (<code>RasterObjectApi</code>).
+Сами растровые узлы документа (фильтры, коррекции) живут в <code>affinity:dom</code>
+(<code>sdk/dom-nodes-raster.md</code>, 156 API): размытия, шумы, уровни, HSL —
+у каждого тройка <code>*Parameters</code> / <code>*RasterNode</code> / <code>*RasterNodeDefinition</code>.</p>
+<h2 id="102">10.2. Эффекты слоёв</h2>
+<p><code>affinity:layereffects</code> (<code>sdk/linestyles-effects.md</code>, 12 API):
+тени (внутренняя/внешняя), свечения, барельеф, наложения цвета и градиента,
+гауссово размытие. Дублирование эффекта на другой слой — команды
+<code>createDuplicate*LayerEffectCommand</code> из каталога команд.</p>
+<h2 id="103-ai-">10.3. AI-команды</h2>
+<p>Генерация и обработка изображений (<code>generateImage</code>, <code>generativeEditImage</code>,
+<code>removeBackground</code>, <code>selectSubject</code>, <code>detectDepth</code>, <code>colourise</code>, <code>imageTrace</code>).
+Помните про <code>NOT_ALLOWED</code>: пользователь может запретить AI в настройках —
+обрабатывайте такой ответ, а не считайте его багом.</p>
+<h2 id="_10">Упражнения</h2>
+<ol>
+<li>Перечислите все <code>*LayerEffect</code>-команды дублирования в каталоге.</li>
+<li>Прочитайте пиксели выделенного растра через подходящий <code>PixelReader</code>.</li>
+<li>Примените <code>removeBackground</code> и проверьте ответ на <code>NOT_ALLOWED</code>.</li>
+</ol>
+<h1 id="11">Глава 11. Файлы, сеть, таймеры, экспорт</h1>
+<h2 id="111-desktop">11.1. Файлы: только Desktop</h2>
+<pre><code class="language-js">// const { ... } = require('/fs.js');   // FileApi, FileSystemApi (sdk/fs-network-os.md)
+const { app } = require('/application.js');
+console.log(app.userDesktopPath);       // единственный доступный корень
+</code></pre>
+<p>Любой путь вне Desktop — ошибка. Бинарные данные — через <code>/buffer.js</code>.</p>
+<h2 id="112">11.2. Сеть</h2>
+<p><code>HttpRequest</code>/<code>HttpResponse</code> (<code>affinity:network</code>, методы <code>RequestMethod</code>,
+статусы <code>HttpStatusCode</code>): tableFromJson тянет JSON для таблицы именно так.
+Сеть тоже попадает под <code>NOT_ALLOWED</code>.</p>
+<h2 id="113">11.3. Экспорт</h2>
+<p>Документ: <code>doc.export(...)</code> / <code>exportAsync</code>, конфиг — <code>ExportConfigApi</code>,
+форматы/масштабы — <code>ExportFormatApi</code>/<code>ExportScaleApi</code>/<code>ExportSizeApi</code>
+(<code>sdk/dom-document.md</code>). Шаблон: <code>templates/export.js</code>. Проверка результата —
+<code>affinity_render_spread</code>.</p>
+<h2 id="114">11.4. Таймеры</h2>
+<p><code>affinity:timers</code> (<code>TimerApi</code>, 11 методов) — отложенные и повторные задачи.
+В синхронных скриптах применяются точечно.</p>
+<h2 id="_11">Упражнения</h2>
+<ol>
+<li>Сохраните лог работы скрипта файлом на Desktop (пример: <code>logToFile.js</code>).</li>
+<li>Загрузите JSON по HTTP и постройте из него таблицу (пример: <code>tableFromJson.js</code>).</li>
+<li>Экспортируйте текущий спред и проверьте файл.</li>
+</ol>
+<h1 id="12_1">Глава 12. Отладка и разбор трёх боевых скриптов</h1>
+<h2 id="121">12.1. Методика отладки</h2>
+<ol>
+<li><code>console.log</code> после каждого этапа (счётчики: <code>Fills: N Strokes: M</code>).</li>
+<li><code>affinity_render_spread</code> — глазами быстрее, чем гадать.</li>
+<li>Минимальный репро: режьте скрипт пополам, пока не найдёте падающую строку.</li>
+<li><code>affinity-check</code>: <code>use strict</code>, <code>module.exports</code>, пути без <code>.js</code>, preview без <code>createClearPreviews</code>.</li>
+<li>Найденное решение — сразу в <code>affinity_add_sdk_hint</code>.</li>
+</ol>
+<p>Типовые падения: нет <code>setCurrentSpread</code>; перепутан порядок
+<code>(polyCurve, brushFill, lineFill, lineStyle, …)</code>; <code>require</code> без <code>.js</code>;
+мутация узла напрямую; диалог через <code>show()</code>.</p>
+<h2 id="122-hanging-chars">12.2. hanging-chars: проход по всем текстам</h2>
+<p>Задача: NBSP после одиночных букв и предлогов (RU/EN, строгие списки 2–3 букв).
+Схема: все спреды → стек → <code>isTextNode</code> → <code>getText</code> → <code>findOrphanSpacePositions</code>
+(3 паттерна, дедупликация, сортировка) → один compound <code>createSetText</code> на поле →
+диалог-отчёт. Undo: шаг на поле. Файл: <code>scripts/hanging-chars/source/hanging-chars.js</code>,
+спека: <code>docs/specs/hanging-chars.md</code>.</p>
+<h2 id="123-color-palette-gen">12.3. color-palette-gen: палитра использования</h2>
+<p>Задача: свотчи всех fills/strokes/gradients справа от artwork.
+Схема: обход <code>hasBrushFill/hasPenFill</code> → словари → origin <code>x + width + 50</code> →
+по <code>AddChildNodesCommandBuilder</code> на элемент → группировка в <code>FILLS/STROKES/GRADIENTS</code>
+через <code>createMoveNodes</code> (<code>NodeMoveType.Inside</code>). Файл: <code>scripts/color-palette-gen/…</code>,
+спека: <code>docs/specs/color-palette-gen.md</code>.</p>
+<h2 id="124-chart-builder">12.4. chart-builder: диаграммы из текста</h2>
+<p>Задача: Line/Bar/Donut из текстового фрейма (<code>Series: v1, v2… --- labels</code>).
+Схема: проверка FrameText → <code>parseData</code> → диалог (тип, W/H, сетка, цвета серий) →
+группа <code>line/bar/donut chart</code> (<code>uniqueGroupName</code>, коллизии → <code>base_2</code>) →
+геометрия батчем → <code>applyLineStyles</code> → легенда. Undo: два шага.
+Файл: <code>scripts/chart-builder/source/chart-builder.js</code>, спека: <code>docs/specs/chart-builder.md</code>.</p>
+<h2 id="_12">Выпускная работа</h2>
+<p>Напишите свой скрипт по полному циклу: спека (<code>docs/specs/_template.md</code>) →
+slice → <code>affinity-check</code> → тесты на пустом и боевом документе → undo-проверка →
+<code>release/</code> + README. Удачи!</p></body></html>

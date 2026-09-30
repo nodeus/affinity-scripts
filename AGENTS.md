@@ -22,20 +22,18 @@ affinity/
 │       ├── release/hanging-chars.js
 │       └── README.md
 ├── docs/
-│   ├── 00-index.md                  # Master index
-│   ├── 01-mcp-tools.md              # MCP tools reference
-│   ├── 02-sdk-v3.3.0.md             # SDK API reference (EN)
-│   ├── 03-migration-guide.md        # Import path migration (RU)
-│   ├── 04-community-scripts.md      # Community scripts catalog
-│   ├── 05-tutorial.md               # Practical tutorial (RU)
-│   ├── 06-examples.md               # Code examples
-│   ├── 07-script-patterns.md        # Patterns & recipes
-│   ├── 08-text-effects.md           # Story/Glyph/Paragraph details
-│   └── specs/                       # Script specifications
+│   ├── index.md                       # Master index
+│   ├── sdk/                           # Full API reference, build 33000 (generated)
+│   ├── guides/                        # quickstart, mcp-tools, patterns, examples, migration, community-catalog
+│   ├── textbook/                      # RU textbook (md chapters + PDF, build-pdf.ps1)
+│   ├── JSLib/                         # JSLib wrappers, synced with JSLib.zip
+│   ├── pub/                           # Published materials
+│   └── specs/                         # Script specifications
 │       ├── _template.md
 │       ├── chart-builder.md
 │       ├── color-palette-gen.md
 │       └── hanging-chars.md
+├── old-docs/                          # Outdated docs/ editions (00–08) + README
 ├── community-scripts/               # 70+ scripts from JiriKrblich (read-only reference)
 ├── .mimocode/                       # MiMo Code config, tools, skills
 │   ├── config.json
@@ -149,9 +147,10 @@ Run `affinity-check` on any script before executing. It catches:
 
 ## Documentation
 
-- Master index: `docs/00-index.md`
-- SDK v3.3.0 reference (EN): `docs/02-sdk-v3.3.0.md`
-- Migration guide (RU): `docs/03-migration-guide.md`
-- Tutorial (RU): `docs/05-tutorial.md`
+- Master index: `docs/index.md`
+- Full SDK reference (build 33000, generated): `docs/sdk/` (map: `docs/sdk/_overview.md`, registry: `docs/sdk/_registry.md`)
+- Guides: `docs/guides/` (`quickstart.md`, `mcp-tools.md`, `patterns.md`, `examples.md`, `migration.md`, `community-catalog.md`)
+- Textbook (RU, md+PDF): `docs/textbook/` (build: `docs/textbook/build-pdf.ps1`)
 - Script specs: `docs/specs/`
-- MCP tools: `docs/01-mcp-tools.md`
+- JSLib wrappers (synced with `JSLib.zip`): `docs/JSLib/`
+- Outdated editions: `old-docs/` (numbered `00–08`), `archive/` (pre-3.3.0)
